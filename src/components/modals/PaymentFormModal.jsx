@@ -56,7 +56,7 @@ export default function PaymentFormModal({ isModalOpen, setIsModalOpen, formData
                             <option value="none">No se repite</option>
                             <option value="weekly">Semanal (7 días)</option>
                             <option value="biweekly">Quincenal (15 días)</option>
-                            <option value="monthly">Mensual (30 días)</option>
+                            <option value="monthly">Mensual (Mismo día sgt mes)</option>
                             <option value="custom">Personalizado</option>
                         </select>
                     </div>

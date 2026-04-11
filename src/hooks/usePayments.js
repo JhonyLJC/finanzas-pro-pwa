@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, serverTimestamp, query, where } from 'firebase/firestore';
 import { db, appId, isMock } from '../lib/firebase';
 
 export function usePayments(user) {
@@ -37,7 +37,10 @@ export function usePayments(user) {
       return;
     }
     const paymentsRef = collection(db, 'artifacts', appId, 'public', 'data', 'payments');
-    const unsubscribe = onSnapshot(paymentsRef,
+    const tenantId = user.tenantId || user.uid;
+    const q = query(paymentsRef, where('tenantId', '==', tenantId));
+    
+    const unsubscribe = onSnapshot(q,
       (snapshot) => {
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setPayments(data);
@@ -52,7 +55,7 @@ export function usePayments(user) {
   }, [user]);
 
   // Listar Stats
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = new Date().toLocaleDateString('en-CA');
   
   const todayOnlyPayments = useMemo(() => {
     return payments.filter(p => p.dueDate === todayStr && !p.isPaid);
@@ -82,6 +85,7 @@ export function usePayments(user) {
         amount: Number(formData.amount),
         originalAmount: Number(formData.amount),
         isPaid: false,
+        tenantId: user.tenantId || user.uid || 'local',
         createdBy: 'Local',
         createdAt: new Date().toISOString(),
         updatedBy: 'Local'
@@ -89,13 +93,17 @@ export function usePayments(user) {
       setPayments(prev => [...prev, newDoc]);
       return;
     }
-    
+
+    const tenantId = user.tenantId || user.uid;
+    if (!tenantId) throw new Error('Usuario no identificado. Cierra sesión e ingresa nuevamente.');
+
     const paymentsRef = collection(db, 'artifacts', appId, 'public', 'data', 'payments');
     await addDoc(paymentsRef, {
       ...formData,
       amount: Number(formData.amount),
       originalAmount: Number(formData.amount),
       isPaid: false,
+      tenantId,
       createdBy: user.email || user.uid,
       createdAt: serverTimestamp(),
       updatedBy: user.email || user.uid
@@ -133,14 +141,18 @@ export function usePayments(user) {
       } else if (payment.recurrenceMode === 'biweekly') {
         nextDate.setDate(nextDate.getDate() + 15);
       } else if (payment.recurrenceMode === 'monthly') {
+        const originalDay = nextDate.getDate();
         nextDate.setMonth(nextDate.getMonth() + 1);
+        if (nextDate.getDate() !== originalDay) {
+           nextDate.setDate(0);
+        }
       } else if (payment.recurrenceMode === 'custom') {
         nextDate.setDate(nextDate.getDate() + (Number(payment.recurrenceDays) || 0));
       }
 
       const nextDateStr = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
 
-      const newPmt = {
+      const newPayment = {
         title: payment.title,
         amount: Number(payment.originalAmount || payment.amount),
         originalAmount: Number(payment.originalAmount || payment.amount),
@@ -149,13 +161,14 @@ export function usePayments(user) {
         recurrenceDays: payment.recurrenceDays || 30,
         dueDate: nextDateStr,
         isPaid: false,
+        tenantId: payment.tenantId || user?.tenantId || 'local',
         voucherUrl: null
       };
 
       if (isMock) {
         setPayments(prev => [...prev, {
           id: Date.now().toString() + Math.floor(Math.random() * 1000),
-          ...newPmt,
+          ...newPayment,
           createdBy: 'Sistema (Auto)',
           createdAt: new Date().toISOString(),
           updatedBy: 'Sistema (Auto)'
@@ -163,7 +176,7 @@ export function usePayments(user) {
       } else {
         const paymentsRef = collection(db, 'artifacts', appId, 'public', 'data', 'payments');
         addDoc(paymentsRef, {
-          ...newPmt,
+          ...newPayment,
           createdBy: 'Sistema (Auto)',
           createdAt: serverTimestamp(),
           updatedBy: 'Sistema (Auto)'
@@ -173,7 +186,7 @@ export function usePayments(user) {
   };
 
   const addPartialPayment = async (payment, inputAmount) => {
-    const newPmt = {
+    const newPayment = {
       title: `[Abono] ${payment.title}`,
       amount: inputAmount,
       originalAmount: inputAmount,
@@ -181,15 +194,20 @@ export function usePayments(user) {
       recurrenceMode: 'none',
       dueDate: payment.dueDate,
       isPaid: true,
+      paidDate: new Date().toLocaleDateString('en-CA'),
+      tenantId: payment.tenantId || user?.tenantId || 'local',
       voucherUrl: null
     };
 
     if (isMock) {
       setPayments(prev => {
-        const updated = prev.map(p => p.id === payment.id ? { ...p, amount: p.amount - inputAmount, originalAmount: p.originalAmount || p.amount } : p);
+        const updated = prev.map(p => p.id === payment.id
+          ? { ...p, amount: p.amount - inputAmount, originalAmount: p.originalAmount || p.amount }
+          : p
+        );
         return [...updated, {
-          id: Date.now().toString() + Math.random().toString().slice(2,5),
-          ...newPmt,
+          id: Date.now().toString() + Math.random().toString().slice(2, 5),
+          ...newPayment,
           createdBy: 'Local (Abono)',
           createdAt: new Date().toISOString(),
           updatedBy: 'Local (Abono)'
@@ -200,8 +218,17 @@ export function usePayments(user) {
       const paymentsRef = collection(db, 'artifacts', appId, 'public', 'data', 'payments');
       await Promise.all([
         updateDoc(docRef, { amount: payment.amount - inputAmount, originalAmount: payment.originalAmount || payment.amount, updatedAt: serverTimestamp() }),
-        addDoc(paymentsRef, { ...newPmt, createdBy: user.email || user.uid, createdAt: serverTimestamp(), updatedBy: user.email || user.uid })
+        addDoc(paymentsRef, { ...newPayment, createdBy: user.email || user.uid, createdAt: serverTimestamp(), updatedBy: user.email || user.uid })
       ]);
+    }
+  };
+
+  const editPayment = async (id, fields) => {
+    if (isMock) {
+      setPayments(prev => prev.map(p => p.id === id ? { ...p, ...fields, updatedBy: 'Local' } : p));
+    } else {
+      const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'payments', id);
+      await updateDoc(docRef, { ...fields, updatedBy: user.email || user.uid, updatedAt: serverTimestamp() });
     }
   };
 
@@ -226,6 +253,7 @@ export function usePayments(user) {
     addPayment,
     deletePayment,
     togglePaid,
+    editPayment,
     addPartialPayment,
     attachVoucher
   };
