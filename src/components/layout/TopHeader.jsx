@@ -1,11 +1,15 @@
 import React from 'react';
-import { TrendingUp, Settings, Sun, Moon, LogOut } from 'lucide-react';
+import { TrendingUp, Settings, Sun, Moon, LogOut, ShieldCheck } from 'lucide-react';
 import { isMock } from '../../lib/firebase';
 
-export default function TopHeader({ role, user, isDarkMode, setIsDarkMode, setIsSettingsOpen, onLogout, canManageCategories }) {
+export default function TopHeader({ role, user, onOpenSidebar }) {
   return (
     <header className="bg-white/90 dark:bg-slate-900/70 backdrop-blur-md border-b border-slate-200 dark:border-white/5 sticky top-0 z-30 px-4 py-3 flex items-center justify-between transition-colors shadow-sm dark:shadow-none">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+            {/* Hamburger Button (Mobile Only) */}
+            <button onClick={onOpenSidebar} className="md:hidden p-2 -ml-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+            </button>
             <div className="bg-blue-600 dark:bg-blue-500 p-2 rounded-lg text-white">
                 <TrendingUp size={20} />
             </div>
@@ -20,35 +24,6 @@ export default function TopHeader({ role, user, isDarkMode, setIsDarkMode, setIs
                   {user?.email || 'Usuario'}
                 </span>
             </div>
-
-            {/* Modo oscuro */}
-            <button onClick={() => setIsDarkMode(!isDarkMode)}
-                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-600 dark:text-slate-300"
-                title={isDarkMode ? 'Modo Claro' : 'Modo Oscuro'}
-                >
-                {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
-
-            {/* Configuración — solo admin */}
-            {canManageCategories && (
-              <button onClick={() => setIsSettingsOpen(true)}
-                  className="hidden md:flex p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-600 dark:text-slate-300"
-                  title="Configuración de Categorías"
-                  >
-                  <Settings size={20} />
-              </button>
-            )}
-
-            {/* Cerrar sesión — solo si no es Mock */}
-            {!isMock && onLogout && (
-              <button
-                onClick={onLogout}
-                className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400"
-                title="Cerrar sesión"
-              >
-                <LogOut size={20} />
-              </button>
-            )}
         </div>
     </header>
   );

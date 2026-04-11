@@ -17,55 +17,69 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ─── Función para verificar autenticación ─────────────────────────
-    function isAuthenticated() {
+    // ─── Helpers ─────────────────────────────────────────────────────────
+    function isAuth() {
       return request.auth != null;
     }
 
-    // ─── Función para obtener el rol del usuario autenticado ──────────
+    function userData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
     function userRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      return userData().role;
+    }
+
+    function userTenantId() {
+      // fallback: el tenantId del usuario, o su propio uid si no tiene
+      let data = userData();
+      return data.keys().hasAny(['tenantId']) ? data.tenantId : request.auth.uid;
     }
 
     function isAdmin() {
-      return isAuthenticated() && userRole() == 'admin';
+      return isAuth() && userRole() == 'admin';
     }
 
     function isEmpleado() {
-      return isAuthenticated() && (userRole() == 'empleado' || userRole() == 'admin');
+      return isAuth() && (userRole() == 'empleado' || userRole() == 'admin');
     }
 
-    // ─── Colección de Usuarios ────────────────────────────────────────
+    function ownTenant(docTenantId) {
+      return docTenantId == userTenantId() || docTenantId == request.auth.uid;
+    }
+
+    // ─── Colección de Usuarios ────────────────────────────────────────────
     match /users/{userId} {
-      // Solo el propio usuario puede leer su perfil, solo admins pueden escribir roles
-      allow read: if isAuthenticated() && request.auth.uid == userId;
-      allow create: if isAuthenticated() && request.auth.uid == userId;
-      allow update: if isAdmin();
+      allow read: if isAuth();
+      allow create: if isAuth() && (request.auth.uid == userId || isAdmin());
+      allow update: if isAuth() && (request.auth.uid == userId || isAdmin());
       allow delete: if isAdmin();
     }
 
-    // ─── Colección de Pagos ───────────────────────────────────────────
+    // ─── Pagos ────────────────────────────────────────────────────────────
     match /artifacts/{appId}/public/data/payments/{paymentId} {
-      // Leer: cualquier empleado autenticado
-      allow read: if isEmpleado();
-
-      // Crear: empleados y admins (empleados pueden crear pagos)
-      allow create: if isEmpleado();
-
-      // Actualizar: empleados pueden marcar como pagado, admins editan todo
-      allow update: if isEmpleado();
-
-      // Eliminar: SOLO admins
-      allow delete: if isAdmin();
+      allow read:   if isEmpleado() && ownTenant(resource.data.tenantId);
+      allow create: if isEmpleado() && ownTenant(request.resource.data.tenantId);
+      allow update: if isEmpleado() && ownTenant(resource.data.tenantId);
+      allow delete: if isAdmin() && ownTenant(resource.data.tenantId);
     }
 
-    // ─── Bloquear todo lo demás por defecto ──────────────────────────
+    // ─── Cobros (Receivables) ─────────────────────────────────────────────
+    match /artifacts/{appId}/public/data/receivables/{receivableId} {
+      allow read:   if isEmpleado() && ownTenant(resource.data.tenantId);
+      allow create: if isEmpleado() && ownTenant(request.resource.data.tenantId);
+      allow update: if isEmpleado() && ownTenant(resource.data.tenantId);
+      allow delete: if isAdmin() && ownTenant(resource.data.tenantId);
+    }
+
+    // ─── Todo lo demás bloqueado ──────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
     }
   }
 }
 `;
+
 
 // Solo para console.log de referencia en desarrollo
 if (import.meta.env.DEV) {

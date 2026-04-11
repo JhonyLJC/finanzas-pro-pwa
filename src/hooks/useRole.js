@@ -5,18 +5,27 @@
  *  - 'admin'    → Acceso total (crear, editar, eliminar, marcar pagado)
  *  - 'empleado' → Solo ver, crear pagos y marcar pagado (NO eliminar)
  */
-export function useRole(role) {
+export function useRole(role, isExpired = false, plan = 'trial') {
   const isAdmin = role === 'admin';
 
   return {
-    // Permisos específicos
-    canDelete:         isAdmin,
-    canCreate:         isAdmin || role === 'empleado',
-    canMarkPaid:       isAdmin || role === 'empleado',
+    // Permisos específicos (bloqueados en modo lectura si expiró)
+    canDelete:         !isExpired && isAdmin,
+    canCreate:         !isExpired && (isAdmin || role === 'empleado'),
+    canEdit:           !isExpired && (isAdmin || role === 'empleado'),
+    canMarkPaid:       !isExpired && (isAdmin || role === 'empleado'),
     canManageCategories: isAdmin,
     canExport:         isAdmin,
+    canExportExcel:    isAdmin && plan === 'empresa',
+    canFilterList:     plan === 'empresa',
     canViewRecords:    isAdmin || role === 'empleado',
-    canAttachVoucher:  isAdmin,
+    canAttachVoucher:  !isExpired && isAdmin,
+    canCreateEmployees: isAdmin && (plan === 'negocio' || plan === 'empresa'),
+
+    // Permisos de cobros (bloqueados en modo lectura si expiró)
+    canCreateReceivable: !isExpired && (isAdmin || role === 'empleado'),
+    canDeleteReceivable: !isExpired && isAdmin,
+    canMarkCollected:    !isExpired && (isAdmin || role === 'empleado'),
 
     // Shorthand general
     isAdmin,
