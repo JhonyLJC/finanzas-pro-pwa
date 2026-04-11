@@ -248,8 +248,8 @@ export default function App() {
         <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 max-w-7xl mx-auto w-full pb-32 md:pb-8">
           {view === 'home' && (
             <HomeView 
-              paymentsApi={{ payments, todayOnlyPayments, overduePayments, togglePaid, stats }}
-              receivablesApi={{ ...receivablesApi, todayOnlyReceivables: receivablesApi.todayOnlyReceivables, overdueReceivables: receivablesApi.overdueReceivables }}
+              paymentsApi={{ payments, todayOnlyPayments, overduePayments, togglePaid, stats, onAction: handleOpenPaymentModal }}
+              receivablesApi={{ ...receivablesApi, todayOnlyReceivables: receivablesApi.todayOnlyReceivables, overdueReceivables: receivablesApi.overdueReceivables, onAction: handleOpenReceivableModal }}
               permissions={permissions}
               subscription={subscription}
             />

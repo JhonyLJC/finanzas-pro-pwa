@@ -61,10 +61,17 @@ export default function PrioritySection({ type = 'payment', items = [], permissi
                 </div>
              </div>
 
-             <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto mt-2 sm:mt-0 pt-3 sm:pt-0 border-t border-slate-100 dark:border-slate-800 sm:border-0 shrink-0">
-                <p className={`font-black text-base ${isOverdue ? 'text-red-600 dark:text-red-400' : 'text-orange-600 dark:text-orange-500'}`}>
-                   S/ {Number(item.amount).toLocaleString()}
-                </p>
+             <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto mt-2 sm:mt-0 pt-3 sm:pt-0 border-t border-slate-100 dark:border-slate-800 sm:border-0 shrink-0">
+                <div className="flex flex-col items-end">
+                  <p className={`font-black text-base ${isOverdue ? 'text-red-600 dark:text-red-400' : 'text-orange-600 dark:text-orange-500'}`}>
+                    S/ {Number(item.amount).toLocaleString()}
+                  </p>
+                  {item.originalAmount > item.amount && (
+                    <span className="text-[10px] text-slate-400 line-through">
+                      S/ {Number(item.originalAmount).toLocaleString()}
+                    </span>
+                  )}
+                </div>
                 {permissions?.canMarkPaid && (
                    <button onClick={() => onAction && onAction(item)}
                      className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm border
@@ -72,7 +79,7 @@ export default function PrioritySection({ type = 'payment', items = [], permissi
                           ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 dark:bg-amber-900/20 dark:border-amber-700/50 dark:text-amber-400 dark:hover:bg-amber-900/40' 
                           : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-700/50 dark:text-emerald-400 dark:hover:bg-emerald-900/40'}`}
                    >
-                     <CheckCircle2 size={14} /> {isPayment ? 'Pagar' : 'Marcar Cobrado'}
+                     <CheckCircle2 size={14} /> {isPayment ? 'Pagar / Abonar' : 'Cobrar / Abonar'}
                    </button>
                 )}
              </div>

@@ -13,9 +13,19 @@ export default function HomeView({ paymentsApi, receivablesApi, permissions, sub
   
   // Calculate remaining days
   let daysLeft = 0;
+  let daysLabel = '';
   if (subscription?.currentPeriodEnd && !subscription?.isExpired) {
-      const msLeft = new Date(subscription.currentPeriodEnd).getTime() - new Date().getTime();
-      daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+    const msLeft = new Date(subscription.currentPeriodEnd).getTime() - new Date().getTime();
+    daysLeft = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)));
+    if (daysLeft >= 365) {
+      const years = Math.floor(daysLeft / 365);
+      daysLabel = `${years} año${years > 1 ? 's' : ''} restante${years > 1 ? 's' : ''}`;
+    } else if (daysLeft >= 30) {
+      const months = Math.floor(daysLeft / 30);
+      daysLabel = `${months} mes${months > 1 ? 'es' : ''} restante${months > 1 ? 's' : ''}`;
+    } else {
+      daysLabel = `${daysLeft} día${daysLeft !== 1 ? 's' : ''} restante${daysLeft !== 1 ? 's' : ''}`;
+    }
   }
 
   if (loading) return null;
@@ -25,10 +35,10 @@ export default function HomeView({ paymentsApi, receivablesApi, permissions, sub
        <div className="flex flex-col mb-6">
           <div className="flex justify-between items-start">
              <h2 className="text-2xl font-black text-slate-800 dark:text-white capitalize">Inicio</h2>
-             {subscription && !subscription.isExpired && (
+             {subscription && !subscription.isExpired && daysLeft > 0 && (
                <div className="px-3 py-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full text-xs font-bold shadow-md flex items-center gap-1.5">
                   <span className="animate-pulse w-1.5 h-1.5 bg-white rounded-full"></span>
-                  {daysLeft} días restantes
+                  {daysLabel}
                </div>
              )}
           </div>
@@ -49,7 +59,7 @@ export default function HomeView({ paymentsApi, receivablesApi, permissions, sub
                  type="payment" 
                  items={[...paymentsApi.overduePayments, ...paymentsApi.todayOnlyPayments]} 
                  permissions={permissions} 
-                 onAction={paymentsApi.togglePaid} 
+                 onAction={paymentsApi.onAction || paymentsApi.togglePaid} 
               />
            </Collapsible>
 
@@ -58,7 +68,7 @@ export default function HomeView({ paymentsApi, receivablesApi, permissions, sub
                  type="receivable" 
                  items={[...receivablesApi.overdueReceivables, ...receivablesApi.todayOnlyReceivables]} 
                  permissions={{ ...permissions, canMarkPaid: permissions.canMarkCollected }} 
-                 onAction={receivablesApi.toggleCollected} 
+                 onAction={receivablesApi.onAction || receivablesApi.toggleCollected} 
               />
            </Collapsible>
 
