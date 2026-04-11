@@ -30,6 +30,12 @@ export default function HomeView({ paymentsApi, receivablesApi, permissions, sub
 
   if (loading) return null;
 
+  const priorityPayments = [...paymentsApi.overduePayments, ...paymentsApi.todayOnlyPayments];
+  const priorityPaymentsTotal = priorityPayments.reduce((acc, p) => acc + Number(p.amount || 0), 0);
+
+  const priorityReceivables = [...receivablesApi.overdueReceivables, ...receivablesApi.todayOnlyReceivables];
+  const priorityReceivablesTotal = priorityReceivables.reduce((acc, r) => acc + Number(r.amount || 0), 0);
+
   return (
     <div className="space-y-2">
        <div className="flex flex-col mb-6">
@@ -54,19 +60,37 @@ export default function HomeView({ paymentsApi, receivablesApi, permissions, sub
        />
 
        <div className="mt-8">
-           <Collapsible title="PRIORIDAD PAGOS" icon={<Wallet size={18} />} defaultOpen={true}>
+           <Collapsible 
+             title="PRIORIDAD PAGOS" 
+             icon={<Wallet size={18} />} 
+             defaultOpen={true}
+             extra={
+               <span className="bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 font-bold px-2 py-0.5 rounded-md text-xs">
+                 S/ {priorityPaymentsTotal.toLocaleString()}
+               </span>
+             }
+           >
               <PrioritySection 
                  type="payment" 
-                 items={[...paymentsApi.overduePayments, ...paymentsApi.todayOnlyPayments]} 
+                 items={priorityPayments} 
                  permissions={permissions} 
                  onAction={paymentsApi.onAction || paymentsApi.togglePaid} 
               />
            </Collapsible>
 
-           <Collapsible title="PRIORIDAD COBROS" icon={<ListChecks size={18} />} defaultOpen={true}>
+           <Collapsible 
+             title="PRIORIDAD COBROS" 
+             icon={<ListChecks size={18} />} 
+             defaultOpen={true}
+             extra={
+               <span className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 font-bold px-2 py-0.5 rounded-md text-xs">
+                 S/ {priorityReceivablesTotal.toLocaleString()}
+               </span>
+             }
+           >
               <PrioritySection 
                  type="receivable" 
-                 items={[...receivablesApi.overdueReceivables, ...receivablesApi.todayOnlyReceivables]} 
+                 items={priorityReceivables} 
                  permissions={{ ...permissions, canMarkPaid: permissions.canMarkCollected }} 
                  onAction={receivablesApi.onAction || receivablesApi.toggleCollected} 
               />

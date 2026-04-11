@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 
-export default function Collapsible({ title, icon, defaultOpen = true, children, onToggle }) {
+export default function Collapsible({ title, icon, defaultOpen = true, children, onToggle, extra }) {
   const [isOpen, setIsOpen] = useState(() => {
     const saved = localStorage.getItem(`collapsible-${title}`);
     return saved !== null ? JSON.parse(saved) : defaultOpen;
@@ -23,7 +23,10 @@ export default function Collapsible({ title, icon, defaultOpen = true, children,
       >
         <div className="flex items-center gap-3">
           {icon && <div className="text-slate-500 dark:text-slate-400">{icon}</div>}
-          <h3 className="font-bold text-slate-700 dark:text-slate-200">{title}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-bold text-slate-700 dark:text-slate-200">{title}</h3>
+            {extra}
+          </div>
         </div>
         <ChevronDown
           size={20}
