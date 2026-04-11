@@ -21,7 +21,7 @@ export default function CashFlowCard({ toPay = 0, toCollect = 0, balance = 0, pa
           <span className="text-sm md:text-xl font-black text-slate-800 dark:text-slate-100 truncate w-full">
             S/ {Number(toPay).toLocaleString()}
           </span>
-          <span className="text-[10px] text-slate-400 mt-1 dark:text-slate-500">{paymentsCount} pdtes.</span>
+          <span className="text-[10px] text-slate-400 mt-1 dark:text-slate-500">{paymentsCount} {paymentsCount === 1 ? 'pendiente' : 'pendientes'}</span>
         </div>
 
         {/* Por Cobrar (Entrada) */}
@@ -35,7 +35,7 @@ export default function CashFlowCard({ toPay = 0, toCollect = 0, balance = 0, pa
           <span className="text-sm md:text-xl font-black text-slate-800 dark:text-slate-100 truncate w-full">
              S/ {Number(toCollect).toLocaleString()}
           </span>
-          <span className="text-[10px] text-slate-400 mt-1 dark:text-slate-500">{receivablesCount} pdtes.</span>
+          <span className="text-[10px] text-slate-400 mt-1 dark:text-slate-500">{receivablesCount} {receivablesCount === 1 ? 'pendiente' : 'pendientes'}</span>
         </div>
 
         {/* Balance Neto */}
@@ -49,7 +49,7 @@ export default function CashFlowCard({ toPay = 0, toCollect = 0, balance = 0, pa
           <span className={`text-sm md:text-xl font-black transition-colors truncate w-full ${isPositive ? 'text-blue-600 dark:text-blue-400' : isNegative ? 'text-red-600 dark:text-red-400' : 'text-slate-700 dark:text-slate-300'}`}>
              S/ {Number(balance).toLocaleString()}
           </span>
-          <span className="text-[10px] text-slate-400 mt-1 dark:text-slate-500">Saldo proyectado</span>
+          <span className="text-[10px] text-slate-400 mt-1 dark:text-slate-500">Neto pendiente</span>
         </div>
 
       </div>

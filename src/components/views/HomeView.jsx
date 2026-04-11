@@ -7,7 +7,7 @@ import DayInsights from '../dashboard/DayInsights';
 import { useDashboard } from '../../hooks/useDashboard';
 
 export default function HomeView({ paymentsApi, receivablesApi, permissions, subscription }) {
-  const { today, month, insights, loading } = useDashboard(paymentsApi, receivablesApi);
+  const { today, pending, month, insights, loading } = useDashboard(paymentsApi, receivablesApi);
 
   const todayStr = new Date().toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' });
   
@@ -46,11 +46,11 @@ export default function HomeView({ paymentsApi, receivablesApi, permissions, sub
        </div>
 
        <CashFlowCard 
-          toPay={today.toPay} 
-          toCollect={today.toCollect} 
-          balance={today.balance} 
-          paymentsCount={paymentsApi.todayOnlyPayments.length} 
-          receivablesCount={receivablesApi.todayOnlyReceivables.length} 
+          toPay={pending.toPay} 
+          toCollect={pending.toCollect} 
+          balance={pending.balance} 
+          paymentsCount={pending.paymentsCount} 
+          receivablesCount={pending.receivablesCount} 
        />
 
        <div className="mt-8">

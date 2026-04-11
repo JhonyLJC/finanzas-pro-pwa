@@ -3,9 +3,26 @@ import { useMemo } from 'react';
 export function useDashboard(paymentsApi, receivablesApi) {
   const loading = paymentsApi.loading || receivablesApi.loading;
 
+  const pending = useMemo(() => {
+    // ALL pending payments (not paid)
+    const allPendingPayments = paymentsApi.payments
+      ? paymentsApi.payments.filter(p => !p.isPaid)
+      : [...(paymentsApi.overduePayments || []), ...(paymentsApi.todayOnlyPayments || [])];
+    // ALL pending receivables (not collected)
+    const allPendingReceivables = receivablesApi.receivables
+      ? receivablesApi.receivables.filter(r => !r.isCollected)
+      : [...(receivablesApi.overdueReceivables || []), ...(receivablesApi.todayOnlyReceivables || [])];
+
+    const toPay = allPendingPayments.reduce((acc, p) => acc + Number(p.amount || 0), 0);
+    const toCollect = allPendingReceivables.reduce((acc, r) => acc + Number(r.amount || 0), 0);
+    const balance = toCollect - toPay;
+    return { toPay, toCollect, balance, paymentsCount: allPendingPayments.length, receivablesCount: allPendingReceivables.length };
+  }, [paymentsApi.payments, paymentsApi.overduePayments, paymentsApi.todayOnlyPayments, receivablesApi.receivables, receivablesApi.overdueReceivables, receivablesApi.todayOnlyReceivables]);
+
+  // Keep 'today' for insights backward compat
   const today = useMemo(() => {
-    const toPay = paymentsApi.todayOnlyPayments.reduce((acc, p) => acc + Number(p.amount), 0);
-    const toCollect = receivablesApi.todayOnlyReceivables.reduce((acc, r) => acc + Number(r.amount), 0);
+    const toPay = (paymentsApi.todayOnlyPayments || []).reduce((acc, p) => acc + Number(p.amount), 0);
+    const toCollect = (receivablesApi.todayOnlyReceivables || []).reduce((acc, r) => acc + Number(r.amount), 0);
     const balance = toCollect - toPay;
     return { toPay, toCollect, balance };
   }, [paymentsApi.todayOnlyPayments, receivablesApi.todayOnlyReceivables]);
@@ -56,6 +73,7 @@ export function useDashboard(paymentsApi, receivablesApi) {
   return {
     loading,
     today,
+    pending,
     overdue,
     month,
     insights
