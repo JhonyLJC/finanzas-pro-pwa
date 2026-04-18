@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { User, Paperclip, CheckCircle2, Trash2, AlertCircle, Edit3, ArrowUpDown, ArrowDownAZ, CalendarArrowUp, Lock, TrendingDown } from 'lucide-react';
+import { User, Paperclip, CheckCircle2, Trash2, AlertCircle, Edit3, ArrowUpDown, ArrowDownAZ, CalendarArrowUp, Lock, TrendingDown, Info } from 'lucide-react';
 
 const WEEKDAYS_ES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 const MONTHS_ES   = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
@@ -18,10 +18,20 @@ function parseDateParts(dueDateStr) {
   };
 }
 
-export default function ListView({ payments, onCheck, onDelete, onAttach, onEdit, permissions, isReceivable = false }) {
+export default function ListView({ payments, onCheck, onDelete, onAttach, onEdit, onInfo, permissions, isReceivable = false }) {
   const [sortMode, setSortMode] = useState('date'); // 'date' | 'alpha'
   const [sortDir, setSortDir] = useState('asc'); // 'asc' | 'desc'
+  const [deletingId, setDeletingId] = useState(null);
   const todayStr = new Date().toLocaleDateString('en-CA');
+
+  const handleDelete = async (id) => {
+    setDeletingId(id);
+    try {
+      await onDelete(id);
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const pending = useMemo(() => {
     return [...payments].filter(p => isReceivable ? !p.isCollected : !p.isPaid);
@@ -138,6 +148,9 @@ export default function ListView({ payments, onCheck, onDelete, onAttach, onEdit
                   {p.recurrenceMode && p.recurrenceMode !== 'none' && (
                     <span className="text-[9px] font-bold bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-full">AUTO</span>
                   )}
+                  {p.priority === 'URGENTE' && <span className="text-[9px] font-black uppercase bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400 px-1.5 py-0.5 rounded-full">URGENTE</span>}
+                  {p.priority === 'PRIORITARIO' && <span className="text-[9px] font-black uppercase bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded-full">PRIORITARIO</span>}
+                  {p.priority === 'NORMAL' && <span className="text-[9px] font-black uppercase bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-400 px-1.5 py-0.5 rounded-full border border-slate-200 dark:border-slate-700">NORMAL</span>}
                 </div>
                 <p className="font-bold text-slate-800 dark:text-slate-100 leading-tight">{p.title}</p>
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -191,11 +204,16 @@ export default function ListView({ payments, onCheck, onDelete, onAttach, onEdit
                   </button>
                 )}
                 {permissions?.canDelete && (
-                  <button onClick={() => onDelete(p.id)}
-                    className="p-1.5 rounded-lg text-slate-300 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                    <Trash2 size={14} />
+                  <button onClick={() => handleDelete(p.id)} disabled={deletingId === p.id}
+                    className="p-1.5 rounded-lg text-slate-300 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50">
+                    {deletingId === p.id ? <div className="w-3.5 h-3.5 border-2 border-red-500/30 border-t-red-500 rounded-full animate-spin"></div> : <Trash2 size={14} />}
                   </button>
                 )}
+                <button onClick={() => onInfo && onInfo(p)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                  title="Ver Detalles">
+                  <Info size={14} />
+                </button>
               </div>
             </div>
           </div>

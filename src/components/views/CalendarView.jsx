@@ -1,14 +1,34 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, CheckCircle2, Trash2, Paperclip, Edit3, TrendingUp, Wallet } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, Trash2, Paperclip, Edit3, TrendingUp, Wallet, Info } from 'lucide-react';
 
 export default function CalendarView({
   payments, receivables = [],
   selectedDate, setSelectedDate,
   onCheckPayment, onDeletePayment, onEditPayment,
   onCheckReceivable, onDeleteReceivable, onEditReceivable,
-  permissions
+  permissions, onInfo
 }) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [deletingPaymentId, setDeletingPaymentId] = useState(null);
+  const [deletingReceivableId, setDeletingReceivableId] = useState(null);
+
+  const handleDeletePayment = async (id) => {
+    setDeletingPaymentId(id);
+    try {
+      await onDeletePayment(id);
+    } finally {
+      setDeletingPaymentId(null);
+    }
+  };
+
+  const handleDeleteReceivable = async (id) => {
+    setDeletingReceivableId(id);
+    try {
+      await onDeleteReceivable(id);
+    } finally {
+      setDeletingReceivableId(null);
+    }
+  };
 
   const daysInMonth = (date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
   const firstDayOfMonth = (date) => new Date(date.getFullYear(), date.getMonth(), 1).getDay();
@@ -104,21 +124,27 @@ export default function CalendarView({
             {activePayments.map(p => (
               <div key={p.id} className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
                 <div className="flex justify-between items-start mb-1">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <Wallet size={11} className="text-amber-500 shrink-0" />
                     <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${p.isPaid ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'}`}>
                       {p.isPaid ? 'PAGADO' : 'PENDIENTE'}
                     </span>
+                    {p.priority === 'URGENTE' && <span className="text-[9px] font-black uppercase bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400 px-1.5 py-0.5 rounded-full">URGENTE</span>}
+                    {p.priority === 'PRIORITARIO' && <span className="text-[9px] font-black uppercase bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded-full">PRIORITARIO</span>}
+                    {p.priority === 'NORMAL' && <span className="text-[9px] font-black uppercase bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-400 px-1.5 py-0.5 rounded-full border border-slate-200 dark:border-slate-700">NORMAL</span>}
                   </div>
                   <div className="flex gap-1">
+                    <button onClick={() => onInfo && onInfo(p)} className="text-slate-400 hover:text-blue-500 transition-colors" title="Detalles">
+                      <Info size={13} />
+                    </button>
                     {permissions?.canEdit && (
                       <button onClick={() => onEditPayment(p)} className="text-slate-400 hover:text-blue-500 transition-colors" title="Editar">
                         <Edit3 size={13} />
                       </button>
                     )}
                     {permissions?.canDelete && (
-                      <button onClick={() => onDeletePayment(p.id)} className="text-slate-300 dark:text-slate-500 hover:text-red-500 transition-colors">
-                        <Trash2 size={13} />
+                      <button onClick={() => handleDeletePayment(p.id)} disabled={deletingPaymentId === p.id} className="text-slate-300 dark:text-slate-500 hover:text-red-500 transition-colors disabled:opacity-50">
+                        {deletingPaymentId === p.id ? <div className="w-3 h-3 border-2 border-red-500/30 border-t-red-500 rounded-full animate-spin"></div> : <Trash2 size={13} />}
                       </button>
                     )}
                   </div>
@@ -139,21 +165,27 @@ export default function CalendarView({
             {activeReceivables.map(r => (
               <div key={r.id} className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-emerald-200 dark:border-emerald-700/30 shadow-sm">
                 <div className="flex justify-between items-start mb-1">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <TrendingUp size={11} className="text-emerald-500 shrink-0" />
                     <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${r.isCollected ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'}`}>
                       {r.isCollected ? 'COBRADO' : 'PENDIENTE'}
                     </span>
+                    {r.priority === 'URGENTE' && <span className="text-[9px] font-black uppercase bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400 px-1.5 py-0.5 rounded-full">URGENTE</span>}
+                    {r.priority === 'PRIORITARIO' && <span className="text-[9px] font-black uppercase bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded-full">PRIORITARIO</span>}
+                    {r.priority === 'NORMAL' && <span className="text-[9px] font-black uppercase bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-400 px-1.5 py-0.5 rounded-full border border-slate-200 dark:border-slate-700">NORMAL</span>}
                   </div>
                   <div className="flex gap-1">
+                    <button onClick={() => onInfo && onInfo(r)} className="text-slate-400 hover:text-blue-500 transition-colors" title="Detalles">
+                      <Info size={13} />
+                    </button>
                     {permissions?.canEdit && (
                       <button onClick={() => onEditReceivable(r)} className="text-slate-400 hover:text-blue-500 transition-colors" title="Editar">
                         <Edit3 size={13} />
                       </button>
                     )}
                     {permissions?.canDelete && (
-                      <button onClick={() => onDeleteReceivable(r.id)} className="text-slate-300 dark:text-slate-500 hover:text-red-500 transition-colors">
-                        <Trash2 size={13} />
+                      <button onClick={() => handleDeleteReceivable(r.id)} disabled={deletingReceivableId === r.id} className="text-slate-300 dark:text-slate-500 hover:text-red-500 transition-colors disabled:opacity-50">
+                        {deletingReceivableId === r.id ? <div className="w-3 h-3 border-2 border-red-500/30 border-t-red-500 rounded-full animate-spin"></div> : <Trash2 size={13} />}
                       </button>
                     )}
                   </div>

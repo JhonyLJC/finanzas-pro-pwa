@@ -120,13 +120,15 @@ export function usePayments(user) {
 
   const togglePaid = async (payment) => {
     const isNowPaid = !payment.isPaid;
+    const completedAt = isNowPaid ? (isMock ? new Date().toISOString() : serverTimestamp()) : null;
     
     if (isMock) {
-      setPayments(prev => prev.map(p => p.id === payment.id ? { ...p, isPaid: isNowPaid } : p));
+      setPayments(prev => prev.map(p => p.id === payment.id ? { ...p, isPaid: isNowPaid, completedAt } : p));
     } else {
       const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'payments', payment.id);
       await updateDoc(docRef, {
         isPaid: isNowPaid,
+        completedAt: isNowPaid ? serverTimestamp() : null,
         updatedBy: user.email || user.uid,
         updatedAt: serverTimestamp()
       });
@@ -161,6 +163,8 @@ export function usePayments(user) {
         recurrenceDays: payment.recurrenceDays || 30,
         dueDate: nextDateStr,
         isPaid: false,
+        priority: payment.priority || 'NORMAL',
+        note: payment.note || '',
         tenantId: payment.tenantId || user?.tenantId || 'local',
         voucherUrl: null
       };

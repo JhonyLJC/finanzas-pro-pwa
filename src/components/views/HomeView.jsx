@@ -6,7 +6,7 @@ import PrioritySection from '../dashboard/PrioritySection';
 import DayInsights from '../dashboard/DayInsights';
 import { useDashboard } from '../../hooks/useDashboard';
 
-export default function HomeView({ paymentsApi, receivablesApi, permissions, subscription }) {
+export default function HomeView({ paymentsApi, receivablesApi, permissions, subscription, onInfo }) {
   const { today, pending, month, insights, loading } = useDashboard(paymentsApi, receivablesApi);
 
   const todayStr = new Date().toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -75,6 +75,7 @@ export default function HomeView({ paymentsApi, receivablesApi, permissions, sub
                  items={priorityPayments} 
                  permissions={permissions} 
                  onAction={paymentsApi.onAction || paymentsApi.togglePaid} 
+                 onInfo={onInfo}
               />
            </Collapsible>
 
@@ -93,6 +94,7 @@ export default function HomeView({ paymentsApi, receivablesApi, permissions, sub
                  items={priorityReceivables} 
                  permissions={{ ...permissions, canMarkPaid: permissions.canMarkCollected }} 
                  onAction={receivablesApi.onAction || receivablesApi.toggleCollected} 
+                 onInfo={onInfo}
               />
            </Collapsible>
 

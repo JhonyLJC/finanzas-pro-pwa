@@ -116,9 +116,12 @@ export default function EditModal({ record, onSave, onClose, isReceivable = fals
               Cancelar
             </button>
             <button type="submit" disabled={isSaving}
-              className="flex-1 py-3 rounded-xl font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-200 dark:shadow-blue-900/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
-              <Save size={16} />
-              {isSaving ? 'Guardando...' : 'Guardar'}
+              className="flex-1 py-3 rounded-xl font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-200 dark:shadow-blue-900/30 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
+              {isSaving ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : (
+                <><Save size={16} /> Guardar</>
+              )}
             </button>
           </div>
         </form>

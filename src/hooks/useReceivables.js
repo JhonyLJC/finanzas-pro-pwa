@@ -135,14 +135,16 @@ export function useReceivables(user) {
   const toggleCollected = async (receivable) => {
     const isNowCollected = !receivable.isCollected;
     const collectedDate = isNowCollected ? new Date().toLocaleDateString('en-CA') : null;
+    const completedAt = isNowCollected ? (isMock ? new Date().toISOString() : serverTimestamp()) : null;
     
     if (isMock) {
-      setReceivables(prev => prev.map(r => r.id === receivable.id ? { ...r, isCollected: isNowCollected, collectedDate } : r));
+      setReceivables(prev => prev.map(r => r.id === receivable.id ? { ...r, isCollected: isNowCollected, collectedDate, completedAt } : r));
     } else {
       const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'receivables', receivable.id);
       await updateDoc(docRef, {
         isCollected: isNowCollected,
         collectedDate,
+        completedAt: isNowCollected ? serverTimestamp() : null,
         updatedBy: user.email || user.uid,
         updatedAt: serverTimestamp()
       });
@@ -177,6 +179,8 @@ export function useReceivables(user) {
         recurrenceDays: receivable.recurrenceDays || 30,
         dueDate: nextDateStr,
         isCollected: false,
+        priority: receivable.priority || 'NORMAL',
+        note: receivable.note || '',
         tenantId: receivable.tenantId || user?.tenantId || 'local',
         voucherUrl: null
       };

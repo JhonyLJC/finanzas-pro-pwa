@@ -1,12 +1,24 @@
-import React from 'react';
-import { Plus, TrendingUp, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, TrendingUp, AlertCircle, FileText } from 'lucide-react';
 
 export default function ReceivableConfirmModal({
   receivableTarget, setReceivableTarget,
   receivableModalAmount, setReceivableModalAmount,
   handleConfirmReceivable
 }) {
+  const [loading, setLoading] = useState(false);
+  
   if (!receivableTarget) return null;
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await handleConfirmReceivable(e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const amount = Number(receivableModalAmount);
   const total = receivableTarget.amount;
@@ -25,7 +37,7 @@ export default function ReceivableConfirmModal({
           </button>
         </div>
 
-        <form onSubmit={handleConfirmReceivable} className="p-5 space-y-4">
+        <form onSubmit={onSubmit} className="p-5 space-y-4">
           <div className="bg-emerald-50 dark:bg-emerald-500/10 p-3 rounded-xl border border-emerald-100 dark:border-emerald-500/20">
             <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase mb-1 tracking-wider">
               Cliente — Cobro Seleccionado
@@ -62,9 +74,13 @@ export default function ReceivableConfirmModal({
               className="flex-1 py-3 rounded-xl font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
               Cancelar
             </button>
-            <button type="submit"
-              className="flex-1 py-3 rounded-xl font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-200 dark:shadow-emerald-900/30 transition-all">
-              {amount >= total ? 'Cobro Completo' : 'Registrar Abono'}
+            <button type="submit" disabled={loading}
+              className="flex-1 py-3 rounded-xl font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-200 dark:shadow-emerald-900/30 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
+              {loading ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : (
+                amount >= total ? 'Cobro Completo' : 'Registrar Abono'
+              )}
             </button>
           </div>
         </form>

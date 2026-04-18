@@ -1,8 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Plus, CheckCircle2 } from 'lucide-react';
 
 export default function PaymentFormModal({ isModalOpen, setIsModalOpen, formData, setFormData, handleAddPayment, categories }) {
+  const [loading, setLoading] = useState(false);
+
   if (!isModalOpen) return null;
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await handleAddPayment(e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-md z-50 flex items-end md:items-center justify-center p-0 md:p-4 transition-all">
@@ -13,13 +25,15 @@ export default function PaymentFormModal({ isModalOpen, setIsModalOpen, formData
                     <Plus size={24} className="rotate-45" />
                 </button>
             </div>
-            <form onSubmit={handleAddPayment} className="p-6 space-y-4">
-                <div>
-                    <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1">Concepto</label>
-                    <input required type="text" placeholder="Ej. Alquiler Local"
-                        className="w-full p-3 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/5 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-colors dark:placeholder-slate-500 shadow-inner"
-                        value={formData.title} onChange={e=> setFormData({...formData, title: e.target.value})}
-                    />
+            <form onSubmit={onSubmit} className="p-6 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                        <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1">Concepto</label>
+                        <input required type="text" placeholder="Ej. Alquiler Local"
+                            className="w-full p-3 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/5 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-colors dark:placeholder-slate-500 shadow-inner"
+                            value={formData.title} onChange={e=> setFormData({...formData, title: e.target.value})}
+                        />
+                    </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -39,11 +53,31 @@ export default function PaymentFormModal({ isModalOpen, setIsModalOpen, formData
                         </select>
                     </div>
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1">Fecha de Vencimiento</label>
+                        <input required type="date"
+                            className="w-full p-3 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/5 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-colors [color-scheme:light] dark:[color-scheme:dark] shadow-inner"
+                            value={formData.dueDate} onChange={e=> setFormData({...formData, dueDate: e.target.value})}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1">Prioridad</label>
+                        <select
+                            className="w-full p-3 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/5 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-colors shadow-inner"
+                            value={formData.priority || 'NORMAL'} onChange={e=> setFormData({...formData, priority: e.target.value})}
+                            >
+                            <option value="NORMAL">Normal</option>
+                            <option value="PRIORITARIO">Prioritario</option>
+                            <option value="URGENTE">Urgente</option>
+                        </select>
+                    </div>
+                </div>
                 <div>
-                    <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1">Fecha de Vencimiento</label>
-                    <input required type="date"
-                        className="w-full p-3 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/5 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-colors [color-scheme:light] dark:[color-scheme:dark] shadow-inner"
-                        value={formData.dueDate} onChange={e=> setFormData({...formData, dueDate: e.target.value})}
+                    <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1">Nota</label>
+                    <textarea placeholder="Detalles, motivo, notas..."
+                        className="w-full p-3 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/5 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-colors dark:placeholder-slate-500 shadow-inner resize-none h-20"
+                        value={formData.note || ''} onChange={e=> setFormData({...formData, note: e.target.value})}
                     />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -70,10 +104,14 @@ export default function PaymentFormModal({ isModalOpen, setIsModalOpen, formData
                     </div>
                     )}
                 </div>
-                <button type="submit"
-                    className="w-full mt-4 bg-blue-600 text-white font-bold p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors shadow-[0_4px_15px_rgba(59,130,246,0.3)] dark:shadow-[0_0_20px_rgba(59,130,246,0.4)]"
+                <button type="submit" disabled={loading}
+                    className="w-full mt-4 bg-blue-600 text-white font-bold p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors shadow-[0_4px_15px_rgba(59,130,246,0.3)] dark:shadow-[0_0_20px_rgba(59,130,246,0.4)] disabled:opacity-70 disabled:cursor-not-allowed"
                     >
-                    <CheckCircle2 size={20} /> Guardar Registro
+                    {loading ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    ) : (
+                      <><CheckCircle2 size={20} /> Guardar Registro</>
+                    )}
                 </button>
             </form>
         </div>

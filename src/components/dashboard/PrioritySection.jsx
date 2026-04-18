@@ -1,7 +1,7 @@
 import React from 'react';
-import { AlertCircle, CalendarClock, User, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, CalendarClock, User, CheckCircle2, Info } from 'lucide-react';
 
-export default function PrioritySection({ type = 'payment', items = [], permissions, onAction }) {
+export default function PrioritySection({ type = 'payment', items = [], permissions, onAction, onInfo }) {
   const isPayment = type === 'payment';
   
   if (!items || items.length === 0) {
@@ -50,7 +50,10 @@ export default function PrioritySection({ type = 'payment', items = [], permissi
                         HOY
                       </span>
                    )}
-                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate">{mainLabel}</span>
+                   {item.priority === 'URGENTE' && <span className="text-[10px] font-black uppercase bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400 px-1.5 py-0.5 rounded-md">URGENTE</span>}
+                   {item.priority === 'PRIORITARIO' && <span className="text-[10px] font-black uppercase bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded-md">PRIORITARIO</span>}
+                   {item.priority === 'NORMAL' && <span className="text-[10px] font-black uppercase bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-400 px-1.5 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">NORMAL</span>}
+                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate ml-1">{mainLabel}</span>
                 </div>
                 
                 <h4 className="font-bold text-slate-800 dark:text-slate-100 leading-tight truncate">{item.title}</h4>
@@ -72,16 +75,23 @@ export default function PrioritySection({ type = 'payment', items = [], permissi
                     </span>
                   )}
                 </div>
-                {permissions?.canMarkPaid && (
-                   <button onClick={() => onAction && onAction(item)}
-                     className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm border
-                        ${isPayment 
-                          ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 dark:bg-amber-900/20 dark:border-amber-700/50 dark:text-amber-400 dark:hover:bg-amber-900/40' 
-                          : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-700/50 dark:text-emerald-400 dark:hover:bg-emerald-900/40'}`}
-                   >
-                     <CheckCircle2 size={14} /> {isPayment ? 'Pagar / Abonar' : 'Cobrar / Abonar'}
+                <div className="flex items-center gap-1">
+                   <button onClick={() => onInfo && onInfo(item)}
+                     className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                     title="Ver Detalles">
+                     <Info size={16} />
                    </button>
-                )}
+                   {permissions?.canMarkPaid && (
+                      <button onClick={() => onAction && onAction(item)}
+                        className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm border
+                           ${isPayment 
+                             ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 dark:bg-amber-900/20 dark:border-amber-700/50 dark:text-amber-400 dark:hover:bg-amber-900/40' 
+                             : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-700/50 dark:text-emerald-400 dark:hover:bg-emerald-900/40'}`}
+                      >
+                        <CheckCircle2 size={14} /> {isPayment ? 'Pagar' : 'Cobrar'}
+                      </button>
+                   )}
+                </div>
              </div>
           </div>
         );

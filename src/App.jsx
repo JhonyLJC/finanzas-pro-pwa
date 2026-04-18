@@ -26,6 +26,7 @@ import ReceivableFormModal from './components/modals/ReceivableFormModal';
 import PaymentConfirmModal from './components/modals/PaymentConfirmModal';
 import ReceivableConfirmModal from './components/modals/ReceivableConfirmModal';
 import EditModal from './components/modals/EditModal';
+import InfoModal from './components/modals/InfoModal';
 import SettingsModal from './components/modals/SettingsModal';
 
 export default function App() {
@@ -44,17 +45,20 @@ export default function App() {
   const [receivableTarget, setReceivableTarget] = useState(null);
   const [receivableModalAmount, setReceivableModalAmount] = useState('');
   const [editTarget, setEditTarget] = useState(null); // { record, isReceivable }
+  const [infoTarget, setInfoTarget] = useState(null);
   const [isFabMenuOpen, setIsFabMenuOpen] = useState(false);
 
   const todayStr = new Date().toLocaleDateString('en-CA');
   const [formData, setFormData] = useState({
     title: '', amount: '', category: 'Varios',
-    recurrenceMode: 'none', recurrenceDays: 30, dueDate: todayStr
+    recurrenceMode: 'none', recurrenceDays: 30, dueDate: todayStr,
+    priority: 'NORMAL', note: ''
   });
   const [isReceivableModalOpen, setIsReceivableModalOpen] = useState(false);
   const [receivableFormData, setReceivableFormData] = useState({
     title: '', amount: '', client: '', invoiceNumber: '',
-    recurrenceMode: 'none', recurrenceDays: 30, dueDate: todayStr
+    recurrenceMode: 'none', recurrenceDays: 30, dueDate: todayStr,
+    priority: 'NORMAL', note: ''
   });
 
   const {
@@ -78,7 +82,7 @@ export default function App() {
     try {
       await addPayment(formData);
       setIsModalOpen(false);
-      setFormData({ title: '', amount: '', category: 'Varios', recurrenceMode: 'none', recurrenceDays: 30, dueDate: todayStr });
+      setFormData({ title: '', amount: '', category: 'Varios', recurrenceMode: 'none', recurrenceDays: 30, dueDate: todayStr, priority: 'NORMAL', note: '' });
       showToast(`Pago "${formData.title}" registrado correctamente.`);
     } catch (err) {
       console.error('Error guardando pago:', err);
@@ -91,7 +95,7 @@ export default function App() {
     try {
       await receivablesApi.addReceivable(receivableFormData);
       setIsReceivableModalOpen(false);
-      setReceivableFormData({ title: '', amount: '', client: '', recurrenceMode: 'none', recurrenceDays: 30, dueDate: todayStr });
+      setReceivableFormData({ title: '', amount: '', client: '', recurrenceMode: 'none', recurrenceDays: 30, dueDate: todayStr, priority: 'NORMAL', note: '' });
       showToast(`Cobro "${receivableFormData.title}" registrado correctamente.`);
     } catch (err) {
       console.error('Error guardando cobro:', err);
@@ -127,12 +131,14 @@ export default function App() {
   };
 
   const handleDelete = async (id) => {
-     await deletePayment(id);
-     showToast("Registro eliminado permanentemente.", "error");
+     if (window.confirm('¿Estás seguro de que deseas eliminar este registro de pago? Esta acción no se puede deshacer.')) {
+         await deletePayment(id);
+         showToast("Registro eliminado permanentemente.", "error");
+     }
   };
 
   const handleAttachVoucher = async (payment) => {
-    const defaultUrl = isMock ? 'https://ejemplo.com/voucher.pdf' : '';
+    const defaultUrl = '';
     const voucherUrl = window.prompt("Ingresa la URL del comprobante o número de recibo:", defaultUrl);
     await attachVoucher(payment, voucherUrl);
     if (voucherUrl) showToast("Comprobante adjuntado con éxito.");
@@ -166,8 +172,10 @@ export default function App() {
   };
 
   const handleDeleteReceivable = async (id) => {
-    await receivablesApi.deleteReceivable(id);
-    showToast("Cobro eliminado.", "error");
+    if (window.confirm('¿Estás seguro de que deseas eliminar este cobro pendiente? Esta acción no se puede deshacer.')) {
+        await receivablesApi.deleteReceivable(id);
+        showToast("Cobro eliminado.", "error");
+    }
   };
 
   // ── Edit handlers ─────────────────────────────────────────────────────
@@ -252,6 +260,7 @@ export default function App() {
               receivablesApi={{ ...receivablesApi, todayOnlyReceivables: receivablesApi.todayOnlyReceivables, overdueReceivables: receivablesApi.overdueReceivables, onAction: handleOpenReceivableModal }}
               permissions={permissions}
               subscription={subscription}
+              onInfo={setInfoTarget}
             />
           )}
 
@@ -276,20 +285,21 @@ export default function App() {
                         selectedDate={selectedDate} setSelectedDate={setSelectedDate}
                         onCheckPayment={handleOpenPaymentModal} onDeletePayment={handleDelete} onEditPayment={handleEditPayment}
                         onCheckReceivable={handleOpenReceivableModal} onDeleteReceivable={handleDeleteReceivable} onEditReceivable={handleEditReceivable}
+                        onInfo={setInfoTarget}
                         permissions={{...permissions, canMarkCollected: permissions.canMarkCollected}}
                       />
                     )}
                     {view === 'paymentList' && (
                       <ListView 
                         payments={payments} onCheck={handleOpenPaymentModal} onDelete={handleDelete}
-                        onAttach={handleAttachVoucher} onEdit={handleEditPayment} permissions={permissions}
+                        onAttach={handleAttachVoucher} onEdit={handleEditPayment} onInfo={setInfoTarget} permissions={permissions}
                         isReceivable={false}
                       />
                     )}
                     {view === 'receivableList' && (
                       <ListView 
                         payments={receivablesApi.receivables} onCheck={handleOpenReceivableModal} onDelete={handleDeleteReceivable}
-                        onAttach={receivablesApi.attachVoucher} onEdit={handleEditReceivable}
+                        onAttach={receivablesApi.attachVoucher} onEdit={handleEditReceivable} onInfo={setInfoTarget}
                         permissions={{...permissions, canMarkPaid: permissions.canMarkCollected}}
                         isReceivable={true}
                       />
@@ -382,6 +392,11 @@ export default function App() {
         isReceivable={editTarget?.isReceivable}
         onSave={handleSaveEdit}
         onClose={() => setEditTarget(null)}
+      />
+
+      <InfoModal 
+        infoTarget={infoTarget} setInfoTarget={setInfoTarget} 
+        isReceivable={infoTarget?._type === 'receivable' || infoTarget?.client !== undefined}
       />
 
       <SettingsModal 

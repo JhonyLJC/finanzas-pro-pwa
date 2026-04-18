@@ -1,8 +1,20 @@
-import React from 'react';
-import { Plus, CheckCircle2, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, CheckCircle2, AlertCircle, FileText } from 'lucide-react';
 
 export default function PaymentConfirmModal({ paymentModalTarget, setPaymentModalTarget, paymentModalAmount, setPaymentModalAmount, handleConfirmPayment }) {
+  const [loading, setLoading] = useState(false);
+  
   if (!paymentModalTarget) return null;
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await handleConfirmPayment(e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-all">
@@ -16,7 +28,7 @@ export default function PaymentConfirmModal({ paymentModalTarget, setPaymentModa
                 </button>
             </div>
             
-            <form onSubmit={handleConfirmPayment} className="p-5 space-y-4">
+            <form onSubmit={onSubmit} className="p-5 space-y-4">
                 <div className="bg-blue-50 dark:bg-blue-500/10 p-3 rounded-xl border border-blue-100 dark:border-blue-500/20">
                     <p className="text-[10px] text-blue-600 dark:text-blue-400 font-bold uppercase mb-1 tracking-wider">Concepto Seleccionado</p>
                     <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{paymentModalTarget.title}</p>
@@ -50,9 +62,13 @@ export default function PaymentConfirmModal({ paymentModalTarget, setPaymentModa
                         className="flex-1 py-3 rounded-xl font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
                         Cancelar
                     </button>
-                    <button type="submit"
-                        className="flex-1 py-3 rounded-xl font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-200 dark:shadow-[0_0_15px_rgba(59,130,246,0.3)] transition-all">
-                        {Number(paymentModalAmount) >= paymentModalTarget.amount ? 'Pago Completo' : 'Registrar Abono'}
+                    <button type="submit" disabled={loading}
+                        className="flex-1 py-3 rounded-xl font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-200 dark:shadow-[0_0_15px_rgba(59,130,246,0.3)] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
+                        {loading ? (
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        ) : (
+                          Number(paymentModalAmount) >= paymentModalTarget.amount ? 'Pago Completo' : 'Registrar Abono'
+                        )}
                     </button>
                 </div>
             </form>

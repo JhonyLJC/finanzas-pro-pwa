@@ -42,12 +42,12 @@ function formatDate(dateStr) {
 function groupByDate(records) {
   const groups = {};
   records.forEach(r => {
-    const dateKey = normalizeDate(r.createdAt) || normalizeDate(r.dueDate) || 'sin-fecha';
+    const dateKey = normalizeDate(r.completedAt) || normalizeDate(r.createdAt) || normalizeDate(r.dueDate) || 'sin-fecha';
     if (!groups[dateKey]) groups[dateKey] = [];
     groups[dateKey].push(r);
   });
   // Sort within each group by timestamp DESC (newest first)
-  Object.values(groups).forEach(arr => arr.sort((a, b) => normalizeTs(b.createdAt) - normalizeTs(a.createdAt)));
+  Object.values(groups).forEach(arr => arr.sort((a, b) => normalizeTs(b.completedAt || b.createdAt) - normalizeTs(a.completedAt || a.createdAt)));
   return groups;
 }
 
@@ -56,7 +56,7 @@ function groupByDate(records) {
 function exportToExcel(records, selectedMonth) {
   const [year, month] = selectedMonth.split('-').map(Number);
   const monthRecords = records.filter(r => {
-    const d = toDate(r.createdAt) || toDate(r.dueDate);
+    const d = toDate(r.completedAt) || toDate(r.createdAt) || toDate(r.dueDate);
     if (!d) return false;
     return d.getFullYear() === year && d.getMonth() + 1 === month;
   });
@@ -71,7 +71,7 @@ function exportToExcel(records, selectedMonth) {
   const rows = monthRecords.map(r => {
     const type = r._type === 'receivable' ? 'Cobro' : (r.title?.startsWith('[Abono]') ? 'Abono' : 'Pago');
     const status = r._type === 'receivable' ? (r.isCollected ? 'Cobrado' : 'Pendiente') : (r.isPaid ? 'Pagado' : 'Pendiente');
-    const dateD = toDate(r.createdAt) || toDate(r.dueDate);
+    const dateD = toDate(r.completedAt) || toDate(r.createdAt) || toDate(r.dueDate);
     const dateStr = dateD ? dateD.toLocaleDateString('es-PE') : '';
     return [
       type,
@@ -102,7 +102,7 @@ function TimelineEntry({ record }) {
   const isAbono = record.title?.startsWith('[Abono]');
   const isAutomatic = record.createdBy?.includes('Sistema (Auto)');
   const cleanTitle = isAbono ? record.title.replace('[Abono] ', '') : record.title;
-  const time = formatTime(record.createdAt);
+  const time = formatTime(record.completedAt || record.createdAt);
 
   const nodeColor = isAbono
     ? 'bg-amber-50 dark:bg-amber-900/30 border-amber-300 dark:border-amber-500/60 text-amber-600'
@@ -145,6 +145,9 @@ function TimelineEntry({ record }) {
           <div className="flex items-start justify-between gap-2 mb-1">
             <div className="flex items-center gap-2 flex-wrap min-w-0">
               <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full shrink-0 ${badge.color}`}>{badge.label}</span>
+              {record.priority === 'URGENTE' && <span className="text-[9px] font-black uppercase bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400 px-1.5 py-0.5 rounded-full shrink-0">URGENTE</span>}
+              {record.priority === 'PRIORITARIO' && <span className="text-[9px] font-black uppercase bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded-full shrink-0">PRIORITARIO</span>}
+              {record.priority === 'NORMAL' && <span className="text-[9px] font-black uppercase bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-400 px-1.5 py-0.5 rounded-full shrink-0 border border-slate-200 dark:border-slate-700">NORMAL</span>}
               <p className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">{cleanTitle}</p>
             </div>
             <p className={`text-sm font-black shrink-0 ${amountColor}`}>
@@ -188,8 +191,8 @@ export default function RecordsView({ payments, receivables = [], permissions })
   const allRecords = useMemo(() => {
     const completedPayments = Array.isArray(payments) ? payments.filter(p => p.isPaid).map(p => ({ ...p, _type: 'payment' })) : [];
     const completedReceivables = Array.isArray(receivables) ? receivables.filter(r => r.isCollected).map(r => ({ ...r, _type: 'receivable' })) : [];
-    // Sort: newest first (by createdAt timestamp DESC)
-    return [...completedPayments, ...completedReceivables].sort((a, b) => normalizeTs(b.createdAt) - normalizeTs(a.createdAt));
+    // Sort: newest first (by completedAt or createdAt timestamp DESC)
+    return [...completedPayments, ...completedReceivables].sort((a, b) => normalizeTs(b.completedAt || b.createdAt) - normalizeTs(a.completedAt || a.createdAt));
   }, [payments, receivables]);
 
   const grouped = useMemo(() => groupByDate(allRecords), [allRecords]);

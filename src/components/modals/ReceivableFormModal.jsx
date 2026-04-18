@@ -13,8 +13,19 @@ export default function ReceivableFormModal({
   const [showClientDropdown, setShowClientDropdown] = useState(false);
   const [newClientInput, setNewClientInput] = useState('');
   const [showAddClient, setShowAddClient] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   if (!isModalOpen) return null;
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await handleAddReceivable(e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSelectClient = (clientName) => {
     setFormData({ ...formData, client: clientName });
@@ -49,7 +60,7 @@ export default function ReceivableFormModal({
           </button>
         </div>
 
-        <form onSubmit={handleAddReceivable} className="p-6 space-y-4 overflow-y-auto flex-1">
+        <form onSubmit={onSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
           
           {/* Concepto */}
           <div>
@@ -136,12 +147,31 @@ export default function ReceivableFormModal({
             <p className="text-[10px] text-slate-400 mt-1">Puedes escribir un nombre nuevo sin añadirlo a la lista.</p>
           </div>
 
-          {/* Fecha */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1">Día de Cobro</label>
+              <input required type="date"
+                className="w-full p-3 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/5 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none dark:text-white transition-colors [color-scheme:light] dark:[color-scheme:dark] shadow-inner"
+                value={formData.dueDate} onChange={e => setFormData({ ...formData, dueDate: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1">Prioridad</label>
+              <select
+                className="w-full p-3 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/5 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none dark:text-white transition-colors shadow-inner"
+                value={formData.priority || 'NORMAL'} onChange={e => setFormData({ ...formData, priority: e.target.value })}
+              >
+                <option value="NORMAL">Normal</option>
+                <option value="PRIORITARIO">Prioritario</option>
+                <option value="URGENTE">Urgente</option>
+              </select>
+            </div>
+          </div>
           <div>
-            <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1">Día de Cobro</label>
-            <input required type="date"
-              className="w-full p-3 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/5 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none dark:text-white transition-colors [color-scheme:light] dark:[color-scheme:dark] shadow-inner"
-              value={formData.dueDate} onChange={e => setFormData({ ...formData, dueDate: e.target.value })}
+            <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1">Nota</label>
+            <textarea placeholder="Detalles, motivo, notas..."
+              className="w-full p-3 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/5 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none dark:text-white transition-colors dark:placeholder-slate-500 shadow-inner resize-none h-20"
+              value={formData.note || ''} onChange={e => setFormData({ ...formData, note: e.target.value })}
             />
           </div>
 
@@ -170,9 +200,13 @@ export default function ReceivableFormModal({
             )}
           </div>
 
-          <button type="submit"
-            className="w-full mt-4 bg-emerald-600 text-white font-bold p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-emerald-700 transition-colors shadow-[0_4px_15px_rgba(16,185,129,0.3)] dark:shadow-[0_0_20px_rgba(16,185,129,0.4)]">
-            <CheckCircle2 size={20} /> Guardar Cobro
+          <button type="submit" disabled={loading}
+            className="w-full mt-4 bg-emerald-600 text-white font-bold p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-emerald-700 transition-colors shadow-[0_4px_15px_rgba(16,185,129,0.3)] dark:shadow-[0_0_20px_rgba(16,185,129,0.4)] disabled:opacity-70 disabled:cursor-not-allowed">
+            {loading ? (
+              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+            ) : (
+              <><CheckCircle2 size={20} /> Guardar Cobro</>
+            )}
           </button>
         </form>
       </div>
