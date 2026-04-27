@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { collection, query, where, getDocs, setDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, setDoc, doc, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { db, firebaseConfig, isMock } from '../lib/firebase';
 
 let secondaryApp;
@@ -93,5 +93,18 @@ export function useTeam(user, currentRole) {
     }
   };
 
-  return { team, loading, createEmployee };
+  const deleteEmployee = async (employeeId) => {
+    if (isMock) {
+        setTeam(prev => prev.filter(e => e.id !== employeeId));
+        return;
+    }
+    try {
+        await deleteDoc(doc(db, 'users', employeeId));
+        setTeam(prev => prev.filter(e => e.id !== employeeId));
+    } catch (err) {
+        throw new Error("No se pudo eliminar al empleado: " + err.message);
+    }
+  };
+
+  return { team, loading, createEmployee, deleteEmployee };
 }

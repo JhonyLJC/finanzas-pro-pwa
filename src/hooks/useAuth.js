@@ -40,15 +40,34 @@ export function useAuth() {
             setRole(data.role || 'empleado');
             if (data.tenantId) currentTenantId = data.tenantId;
 
-            if (data.currentPeriodEnd) {
-                const end = new Date(data.currentPeriodEnd);
-                setSubscription({ currentPeriodEnd: data.currentPeriodEnd, isExpired: new Date() > end, plan: data.plan || 'trial' });
+            let actualData = data;
+            // Si el rol es empleado y tiene un tenantId diferente a su propio UID, buscamos los datos del dueño
+            if (data.role === 'empleado' && data.tenantId && data.tenantId !== firebaseUser.uid) {
+              try {
+                const adminDoc = await getDoc(doc(db, 'users', data.tenantId));
+                if (adminDoc.exists()) {
+                  const adminData = adminDoc.data();
+                  // Forzamos a usar el límite y plan del dueño
+                  actualData = { ...data, currentPeriodEnd: adminData.currentPeriodEnd, plan: adminData.plan };
+                }
+              } catch (e) {
+                console.error("No se pudo obtener datos del Admin", e);
+              }
+            }
+
+            if (actualData.currentPeriodEnd) {
+                const end = new Date(actualData.currentPeriodEnd);
+                setSubscription({ currentPeriodEnd: actualData.currentPeriodEnd, isExpired: new Date() > end, plan: actualData.plan || 'trial' });
             } else {
-                // Si no tiene fecha, le damos 14 días gratis
-                const trialEnd = new Date();
-                trialEnd.setDate(trialEnd.getDate() + 14);
-                setSubscription({ currentPeriodEnd: trialEnd.toISOString(), isExpired: false, plan: 'trial' });
-                updateDoc(doc(db, 'users', firebaseUser.uid), { currentPeriodEnd: trialEnd.toISOString(), tenantId: currentTenantId, plan: 'trial' }).catch(() => {});
+                // Si no tiene fecha y es el dueño, le damos 14 días gratis
+                if (actualData.role === 'admin') {
+                   const trialEnd = new Date();
+                   trialEnd.setDate(trialEnd.getDate() + 14);
+                   setSubscription({ currentPeriodEnd: trialEnd.toISOString(), isExpired: false, plan: 'trial' });
+                   updateDoc(doc(db, 'users', firebaseUser.uid), { currentPeriodEnd: trialEnd.toISOString(), tenantId: currentTenantId, plan: 'trial' }).catch(() => {});
+                } else {
+                   setSubscription({ currentPeriodEnd: null, isExpired: true, plan: 'trial' }); // Si un empleado no halla al dueño, asumimos expirado
+                }
             }
           } else {
             // Primera vez que inicia sesión → crear documento como dueño (tenant propio)

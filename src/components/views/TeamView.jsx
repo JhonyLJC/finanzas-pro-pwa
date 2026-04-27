@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Users, Plus, Mail, Lock, UserPlus, Trash2, AlertCircle } from 'lucide-react';
 
 export default function TeamView({ teamApi }) {
-  const { team, loading, createEmployee } = teamApi;
+  const { team, loading, createEmployee, deleteEmployee } = teamApi;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isCreating, setIsCreating] = useState(false);
@@ -115,7 +115,16 @@ export default function TeamView({ teamApi }) {
                              <p className="text-xs text-slate-500">Rol: {emp.role}</p>
                          </div>
                      </div>
-                     <button disabled title="Proximamente" className="p-2 text-slate-300 dark:text-slate-600 hover:text-red-500 transition-colors">
+                     <button type="button" onClick={async () => {
+                         if (window.confirm(`¿Estás seguro de que deseas eliminar al empleado ${emp.email}?`)) {
+                             try {
+                                 await deleteEmployee(emp.id);
+                                 alert('Empleado eliminado.');
+                             } catch (err) {
+                                 alert(err.message);
+                             }
+                         }
+                     }} className="p-2 text-slate-300 dark:text-slate-600 hover:text-red-500 transition-colors">
                         <Trash2 size={18} />
                      </button>
                  </div>

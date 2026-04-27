@@ -51,6 +51,15 @@ export default function PaymentFormModal({ isModalOpen, setIsModalOpen, formData
                             >
                             {categories.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
+                        {formData.category === 'Varios' && (
+                            <input
+                                type="text"
+                                placeholder="Especificar categoría (opcional)"
+                                className="w-full mt-2 p-3 text-sm bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/5 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-colors dark:placeholder-slate-500 shadow-inner"
+                                value={formData.customCategory || ''}
+                                onChange={e => setFormData({ ...formData, customCategory: e.target.value })}
+                            />
+                        )}
                     </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">

@@ -80,7 +80,13 @@ export default function App() {
   const handleCreatePayment = async (e) => {
     e.preventDefault();
     try {
-      await addPayment(formData);
+      const dataToSave = { ...formData };
+      if (dataToSave.category === 'Varios' && dataToSave.customCategory?.trim()) {
+         dataToSave.category = dataToSave.customCategory.trim();
+      }
+      delete dataToSave.customCategory;
+
+      await addPayment(dataToSave);
       setIsModalOpen(false);
       setFormData({ title: '', amount: '', category: 'Varios', recurrenceMode: 'none', recurrenceDays: 30, dueDate: todayStr, priority: 'NORMAL', note: '' });
       showToast(`Pago "${formData.title}" registrado correctamente.`);
@@ -270,11 +276,13 @@ export default function App() {
                     <h3 className="text-lg md:text-xl font-bold dark:text-white capitalize">
                         {view === 'calendar' ? 'Calendario de Movimientos' : view === 'paymentList' ? 'Pagos Pendientes' : view === 'receivableList' ? 'Cobros Pendientes' : 'Historial de Registros'}
                     </h3>
-                    <button onClick={exportToCSV}
-                        className="hidden md:flex items-center gap-1 text-xs font-bold px-3 py-1.5 bg-green-50 dark:bg-green-900/40 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-lg hover:bg-green-100 dark:hover:bg-green-800 transition-colors shadow-sm"
-                        >
-                        Exportar CSV
-                    </button>
+                    {permissions.canExportExcel && (
+                      <button onClick={exportToCSV}
+                          className="hidden md:flex items-center gap-1 text-xs font-bold px-3 py-1.5 bg-green-50 dark:bg-green-900/40 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-lg hover:bg-green-100 dark:hover:bg-green-800 transition-colors shadow-sm"
+                          >
+                          Exportar CSV
+                      </button>
+                    )}
                 </div>
 
                 <div className="p-4 md:p-6">
