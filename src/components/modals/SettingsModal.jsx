@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Settings, Trash2, User, LogOut, Moon, Sun, Crown, ChevronRight, Mail, MessageCircle } from 'lucide-react';
+import { Plus, Settings, Trash2, User, LogOut, Moon, Sun, Crown, ChevronRight, Mail, MessageCircle, HelpCircle, Lightbulb } from 'lucide-react';
 import { isMock } from '../../lib/firebase';
 
 export default function SettingsModal({
@@ -99,43 +99,75 @@ export default function SettingsModal({
 
                     {/* 4. Soporte y Sugerencias */}
                     <section className="space-y-3">
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">Soporte y Sugerencias</h4>
-                        <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 rounded-2xl p-4 space-y-4">
-                            <p className="text-sm text-slate-600 dark:text-slate-400">
-                                ¿Tienes alguna idea para mejorar o necesitas ayuda? Contáctanos de acuerdo a tu plan.
-                            </p>
-
-                            <div className="flex flex-col gap-3">
-                                <a
-                                    href={`mailto:soporte@finanzaspro.com?subject=Soporte/Sugerencia - ${user?.email}`}
-                                    className="w-full flex items-center justify-center gap-2 py-3 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold transition-all text-sm border border-slate-200 dark:border-white/5"
-                                >
-                                    <Mail size={18} />
-                                    Soporte por Correo
-                                </a>
-
-                                {['negocio', 'empresa'].includes(subscription?.plan?.toLowerCase()) ? (
-                                    <button
-                                        onClick={() => {
-                                            const phone = '51964173218';
-                                            const msj = `Hola equipo FINANZASPRO, necesito soporte/tengo una sugerencia.\nUsuario: ${user?.email}`;
-                                            window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msj)}`, '_blank');
-                                        }}
-                                        className="w-full flex items-center justify-center gap-2 py-3 bg-[#25D366] hover:bg-[#128C7E] text-white rounded-xl font-bold transition-all text-sm shadow-md"
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">Contacto</h4>
+                        
+                        <div className="grid grid-cols-1 gap-3">
+                            {/* Bloque Soporte */}
+                            <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 rounded-2xl p-4">
+                                <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-bold mb-1">
+                                    <HelpCircle size={18} />
+                                    Soporte Técnico
+                                </div>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">¿Problemas o dudas? Contáctanos.</p>
+                                
+                                <div className="grid grid-cols-2 gap-2">
+                                    <a
+                                        href={`mailto:soporte@finanzaspro.com?subject=Soporte Técnico - ${user?.email}&body=Hola equipo FINANZASPRO,%0A%0ATengo el siguiente problema/duda:%0A[Describe aquí tu problema]%0A%0AUsuario: ${user?.email}`}
+                                        className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold transition-all text-xs border border-slate-200 dark:border-white/5"
                                     >
-                                        <MessageCircle size={18} />
-                                        WhatsApp Prioritario
-                                    </button>
-                                ) : (
-                                    <button
-                                        disabled
-                                        className="w-full flex items-center justify-center gap-2 py-3 bg-slate-50 dark:bg-slate-800/30 text-slate-400 dark:text-slate-600 rounded-xl font-bold text-sm cursor-not-allowed border border-slate-100 dark:border-white/5"
-                                        title="Exclusivo para planes Negocio y Empresa"
+                                        <Mail size={16} /> Correo
+                                    </a>
+                                    {['negocio', 'empresa'].includes(subscription?.plan?.toLowerCase()) ? (
+                                        <button
+                                            onClick={() => {
+                                                const phone = '51964173218';
+                                                const msj = `Hola equipo FINANZASPRO, necesito Soporte Técnico.\n\nMi problema/duda es:\n[Describe aquí]\n\nUsuario: ${user?.email}`;
+                                                window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msj)}`, '_blank');
+                                            }}
+                                            className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-[#25D366] hover:bg-[#128C7E] text-white rounded-xl font-bold transition-all text-xs shadow-md"
+                                        >
+                                            <MessageCircle size={16} /> WhatsApp
+                                        </button>
+                                    ) : (
+                                        <button disabled className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-slate-50 dark:bg-slate-800/30 text-slate-400 dark:text-slate-600 rounded-xl font-bold text-xs cursor-not-allowed border border-slate-100 dark:border-white/5" title="Sube de plan">
+                                            <MessageCircle size={16} /> WA (Pro)
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Bloque Sugerencias */}
+                            <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 rounded-2xl p-4">
+                                <div className="flex items-center gap-2 text-amber-500 font-bold mb-1">
+                                    <Lightbulb size={18} />
+                                    Sugerencias
+                                </div>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">¿Ideas de mejora? Queremos escucharte.</p>
+                                
+                                <div className="grid grid-cols-2 gap-2">
+                                    <a
+                                        href={`mailto:soporte@finanzaspro.com?subject=Sugerencia de Mejora - ${user?.email}&body=Hola equipo FINANZASPRO,%0A%0AMe gustaría sugerir lo siguiente:%0A[Describe aquí tu sugerencia]%0A%0AUsuario: ${user?.email}`}
+                                        className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold transition-all text-xs border border-slate-200 dark:border-white/5"
                                     >
-                                        <MessageCircle size={18} />
-                                        WhatsApp Prioritario (Sube de plan)
-                                    </button>
-                                )}
+                                        <Mail size={16} /> Correo
+                                    </a>
+                                    {['negocio', 'empresa'].includes(subscription?.plan?.toLowerCase()) ? (
+                                        <button
+                                            onClick={() => {
+                                                const phone = '51964173218';
+                                                const msj = `Hola equipo FINANZASPRO, tengo una Sugerencia de mejora.\n\nMi idea es:\n[Describe aquí]\n\nUsuario: ${user?.email}`;
+                                                window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msj)}`, '_blank');
+                                            }}
+                                            className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-[#25D366] hover:bg-[#128C7E] text-white rounded-xl font-bold transition-all text-xs shadow-md"
+                                        >
+                                            <MessageCircle size={16} /> WhatsApp
+                                        </button>
+                                    ) : (
+                                        <button disabled className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-slate-50 dark:bg-slate-800/30 text-slate-400 dark:text-slate-600 rounded-xl font-bold text-xs cursor-not-allowed border border-slate-100 dark:border-white/5" title="Sube de plan">
+                                            <MessageCircle size={16} /> WA (Pro)
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </section>

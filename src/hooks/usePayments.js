@@ -11,24 +11,40 @@ export function usePayments(user) {
     return [];
   });
 
+  const getCategoriesKey = () => `finanzaspro_categories_${user?.tenantId || user?.uid || 'local'}`;
+
   const [categories, setCategories] = useState(() => {
-    if (isMock) {
-      const local = localStorage.getItem('categories');
+    try {
+      const local = localStorage.getItem(getCategoriesKey());
       return local ? JSON.parse(local) : ['Alquiler', 'Servicios', 'Planillas', 'Proveedores', 'Varios'];
+    } catch {
+      return ['Alquiler', 'Servicios', 'Planillas', 'Proveedores', 'Varios'];
     }
-    return ['Alquiler', 'Servicios', 'Planillas', 'Proveedores', 'Varios'];
   });
 
   const [loading, setLoading] = useState(!isMock);
 
-  // Sync Mocks
   useEffect(() => {
     if (isMock) localStorage.setItem('payments', JSON.stringify(payments));
   }, [payments]);
 
   useEffect(() => {
-    if (isMock) localStorage.setItem('categories', JSON.stringify(categories));
-  }, [categories]);
+    const key = getCategoriesKey();
+    try {
+      const local = localStorage.getItem(key);
+      if (local) {
+        setCategories(JSON.parse(local));
+      } else {
+        setCategories(['Alquiler', 'Servicios', 'Planillas', 'Proveedores', 'Varios']);
+      }
+    } catch {
+      setCategories(['Alquiler', 'Servicios', 'Planillas', 'Proveedores', 'Varios']);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    localStorage.setItem(getCategoriesKey(), JSON.stringify(categories));
+  }, [categories, user]);
 
   // Escuchar Pagos de Firestore
   useEffect(() => {

@@ -13,17 +13,33 @@ export function useReceivables(user) {
 
   const [loading, setLoading] = useState(!isMock);
 
+  const getSavedClientsKey = () => `finanzaspro_savedClients_${user?.tenantId || user?.uid || 'local'}`;
+
   // Lista persistente de clientes guardados (guardada en localStorage)
   const [savedClients, setSavedClients] = useState(() => {
     try {
-      const stored = localStorage.getItem('finanzaspro_savedClients');
+      const stored = localStorage.getItem(getSavedClientsKey());
       return stored ? JSON.parse(stored) : [];
     } catch { return []; }
   });
 
   useEffect(() => {
-    localStorage.setItem('finanzaspro_savedClients', JSON.stringify(savedClients));
-  }, [savedClients]);
+    const key = getSavedClientsKey();
+    try {
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        setSavedClients(JSON.parse(stored));
+      } else {
+        setSavedClients([]);
+      }
+    } catch {
+      setSavedClients([]);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    localStorage.setItem(getSavedClientsKey(), JSON.stringify(savedClients));
+  }, [savedClients, user]);
 
   const addSavedClient = (name) => {
     if (!name || !name.trim()) return;
