@@ -22,8 +22,8 @@ export default function InfoModal({ infoTarget, setInfoTarget, isReceivable = fa
           
           <div className="space-y-1">
             <p className="text-xl font-black text-slate-800 dark:text-slate-100 leading-tight">{infoTarget.title}</p>
-            {isReceivable && infoTarget.client && (
-               <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-500">{infoTarget.client}</p>
+            {isReceivable && infoTarget.category && (
+               <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-500">{infoTarget.category}</p>
             )}
             {!isReceivable && infoTarget.category && (
                <p className="text-sm font-semibold text-blue-600 dark:text-blue-500">{infoTarget.category}</p>

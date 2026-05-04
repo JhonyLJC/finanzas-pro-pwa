@@ -169,9 +169,9 @@ export default function ListView({ payments, onCheck, onDelete, onAttach, onEdit
                   )}
                 </div>
                 <div className="flex items-center gap-2 mt-1 flex-wrap text-[10px] text-slate-400 dark:text-slate-500">
-                  {isReceivable && p.client && <span className="font-semibold text-emerald-600 dark:text-emerald-400">{p.client}</span>}
+                  {isReceivable && p.category && <span className="font-semibold text-emerald-600 dark:text-emerald-400">{p.category}</span>}
                   <span className="flex items-center gap-1"><User size={10} /> {p.createdBy || 'Sistema'}</span>
-                  {p.category && <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{p.category}</span>}
+                  {!isReceivable && p.category && <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{p.category}</span>}
                 </div>
               </div>
             </div>

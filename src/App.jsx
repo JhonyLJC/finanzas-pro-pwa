@@ -30,7 +30,7 @@ import InfoModal from './components/modals/InfoModal';
 import SettingsModal from './components/modals/SettingsModal';
 
 export default function App() {
-  const { user, role, authError, authLoading, subscription, login, logout } = useAuth();
+  const { user, role, authError, authLoading, subscription, login, logout, sendPasswordReset, changePassword } = useAuth();
   const permissions = useRole(role, subscription?.isExpired, subscription?.plan);
 
   const [view, setView] = useState('home');
@@ -56,7 +56,7 @@ export default function App() {
   });
   const [isReceivableModalOpen, setIsReceivableModalOpen] = useState(false);
   const [receivableFormData, setReceivableFormData] = useState({
-    title: '', amount: '', client: '', invoiceNumber: '',
+    title: '', amount: '', category: 'Otros', invoiceNumber: '',
     recurrenceMode: 'none', recurrenceDays: 30, dueDate: todayStr,
     priority: 'NORMAL', note: ''
   });
@@ -99,10 +99,16 @@ export default function App() {
   const handleCreateReceivable = async (e) => {
     e.preventDefault();
     try {
-      await receivablesApi.addReceivable(receivableFormData);
+      const dataToSave = { ...receivableFormData };
+      if (dataToSave.category === 'Otros' && dataToSave.customCategory?.trim()) {
+         dataToSave.category = dataToSave.customCategory.trim();
+      }
+      delete dataToSave.customCategory;
+
+      await receivablesApi.addReceivable(dataToSave);
       setIsReceivableModalOpen(false);
-      setReceivableFormData({ title: '', amount: '', client: '', recurrenceMode: 'none', recurrenceDays: 30, dueDate: todayStr, priority: 'NORMAL', note: '' });
-      showToast(`Cobro "${receivableFormData.title}" registrado correctamente.`);
+      setReceivableFormData({ title: '', amount: '', category: 'Otros', invoiceNumber: '', recurrenceMode: 'none', recurrenceDays: 30, dueDate: todayStr, priority: 'NORMAL', note: '' });
+      showToast(`Cobro "${dataToSave.title}" registrado correctamente.`);
     } catch (err) {
       console.error('Error guardando cobro:', err);
       showToast(`Error al guardar: ${err.message}`, 'error');
@@ -168,7 +174,7 @@ export default function App() {
     if (!rec || isNaN(inputAmount) || inputAmount <= 0) return;
     if (inputAmount >= rec.amount) {
       await receivablesApi.toggleCollected(rec);
-      showToast(`S/ ${inputAmount.toLocaleString()} cobrados a "${rec.client || rec.title}"`);
+      showToast(`S/ ${inputAmount.toLocaleString()} cobrados en "${rec.category || rec.title}"`);
     } else {
       await receivablesApi.addPartialReceivable(rec, inputAmount);
       showToast(`Abono de S/ ${inputAmount.toLocaleString()} registrado.`, 'success');
@@ -204,21 +210,6 @@ export default function App() {
     }
   };
 
-  const exportToCSV = () => {
-    const headers = "ID,Concepto,Monto,Vencimiento,Estado,CreadoPor\n";
-    const rows = payments.map(p => {
-      const [y, m, d] = p.dueDate.split('-');
-      const formattedDate = `${d}/${m}/${y}`;
-      return `${p.id},"${p.title}",${p.amount},${formattedDate},${p.isPaid ? 'Pagado' : 'Pendiente'},${p.createdBy}`;
-    }).join("\n");
-    const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `reporte_pagos_${todayStr}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
   if (loading || receivablesApi.loading) return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
@@ -246,8 +237,9 @@ export default function App() {
         setIsOpen={setIsSidebarOpen} 
         view={view} 
         setView={setView} 
-        isAdmin={permissions.canCreateEmployees} 
+        isAdmin={permissions.canManageTeam} 
         setIsSettingsOpen={setIsSettingsOpen}
+        permissions={permissions}
       />
 
       <div className="flex-1 flex flex-col relative w-full overflow-y-auto">
@@ -276,13 +268,6 @@ export default function App() {
                     <h3 className="text-lg md:text-xl font-bold dark:text-white capitalize">
                         {view === 'calendar' ? 'Calendario de Movimientos' : view === 'paymentList' ? 'Pagos Pendientes' : view === 'receivableList' ? 'Cobros Pendientes' : 'Historial de Registros'}
                     </h3>
-                    {permissions.canExportExcel && (
-                      <button onClick={exportToCSV}
-                          className="hidden md:flex items-center gap-1 text-xs font-bold px-3 py-1.5 bg-green-50 dark:bg-green-900/40 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-lg hover:bg-green-100 dark:hover:bg-green-800 transition-colors shadow-sm"
-                          >
-                          Exportar CSV
-                      </button>
-                    )}
                 </div>
 
                 <div className="p-4 md:p-6">
@@ -320,7 +305,7 @@ export default function App() {
           )}
 
           {view === 'subscription' && <SubscriptionView user={user} />}
-          {view === 'team' && permissions.canCreateEmployees && <TeamView teamApi={teamApi} />}
+          {view === 'team' && permissions.canManageTeam && <TeamView teamApi={teamApi} />}
           
         </main>
       </div>
@@ -377,10 +362,7 @@ export default function App() {
         isModalOpen={isReceivableModalOpen} setIsModalOpen={setIsReceivableModalOpen} 
         formData={receivableFormData} setFormData={setReceivableFormData} 
         handleAddReceivable={handleCreateReceivable} 
-        clients={receivablesApi.clients}
-        savedClients={receivablesApi.savedClients}
-        onAddClient={receivablesApi.addSavedClient}
-        onRemoveClient={receivablesApi.removeSavedClient}
+        categories={receivablesApi.receivableCategories}
       />
 
       <PaymentConfirmModal 
@@ -398,13 +380,14 @@ export default function App() {
       <EditModal
         record={editTarget?.record}
         isReceivable={editTarget?.isReceivable}
+        categories={editTarget?.isReceivable ? receivablesApi.receivableCategories : categories}
         onSave={handleSaveEdit}
         onClose={() => setEditTarget(null)}
       />
 
       <InfoModal 
         infoTarget={infoTarget} setInfoTarget={setInfoTarget} 
-        isReceivable={infoTarget?._type === 'receivable' || infoTarget?.client !== undefined}
+        isReceivable={infoTarget?._type === 'receivable' || infoTarget?.isCollected !== undefined}
       />
 
       <SettingsModal 
@@ -413,6 +396,7 @@ export default function App() {
         isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode}
         user={user} role={role} subscription={subscription}
         onLogout={logout} setView={setView}
+        changePassword={changePassword}
       />
 
     </div>

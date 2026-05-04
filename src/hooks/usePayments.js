@@ -218,11 +218,13 @@ export function usePayments(user) {
       tenantId: payment.tenantId || user?.tenantId || 'local',
       voucherUrl: null
     };
+    // Remaining balance after partial payment
+    const remaining = payment.amount - inputAmount;
 
     if (isMock) {
       setPayments(prev => {
         const updated = prev.map(p => p.id === payment.id
-          ? { ...p, amount: p.amount - inputAmount, originalAmount: p.originalAmount || p.amount }
+          ? { ...p, amount: remaining, originalAmount: remaining }
           : p
         );
         return [...updated, {
@@ -237,7 +239,7 @@ export function usePayments(user) {
       const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'payments', payment.id);
       const paymentsRef = collection(db, 'artifacts', appId, 'public', 'data', 'payments');
       await Promise.all([
-        updateDoc(docRef, { amount: payment.amount - inputAmount, originalAmount: payment.originalAmount || payment.amount, updatedAt: serverTimestamp() }),
+        updateDoc(docRef, { amount: remaining, originalAmount: remaining, updatedAt: serverTimestamp() }),
         addDoc(paymentsRef, { ...newPayment, createdBy: user.email || user.uid, createdAt: serverTimestamp(), updatedBy: user.email || user.uid })
       ]);
     }

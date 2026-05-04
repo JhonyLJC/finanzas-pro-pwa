@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { collection, query, where, getDocs, setDoc, doc, serverTimestamp, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, setDoc, doc, serverTimestamp, deleteDoc, updateDoc } from 'firebase/firestore';
 import { db, firebaseConfig, isMock } from '../lib/firebase';
+
+const VALID_MEMBER_ROLES = ['admin_secundario', 'empleado', 'contador'];
+const MAX_TEAM_EMPRESA   = 10;
 
 let secondaryApp;
 let secondaryAuth;
@@ -14,28 +17,34 @@ try {
 }
 
 export function useTeam(user, currentRole) {
-  const [team, setTeam] = useState([]);
+  const [team, setTeam]       = useState([]);
   const [loading, setLoading] = useState(!isMock);
 
   useEffect(() => {
     if (!user || user.tenantId === 'local' || isMock) {
-        if(isMock) {
-            setTeam([
-                { id: '1', email: 'empleado1@local.com', role: 'empleado', createdAt: new Date().toISOString() }
-            ]);
-        }
-        setLoading(false);
-        return;
+      if (isMock) {
+        setTeam([
+          { id: '1', email: 'secundario@local.com',  role: 'admin_secundario', createdAt: new Date().toISOString() },
+          { id: '2', email: 'empleado@local.com',    role: 'empleado',         createdAt: new Date().toISOString() },
+          { id: '3', email: 'contador@local.com',    role: 'contador',         createdAt: new Date().toISOString() },
+        ]);
+      }
+      setLoading(false);
+      return;
     }
 
     const fetchTeam = async () => {
       setLoading(true);
       try {
         const usersRef = collection(db, 'users');
-        // Traer todos los empleados de este tenant
-        const q = query(usersRef, where('tenantId', '==', user.tenantId), where('role', '==', 'empleado'));
+        // Traer todos los integrantes del tenant (cualquier rol excepto admin principal)
+        const q = query(
+          usersRef,
+          where('tenantId', '==', user.tenantId),
+          where('role', 'in', VALID_MEMBER_ROLES)
+        );
         const snapshot = await getDocs(q);
-        const members = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const members  = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         setTeam(members);
       } catch (err) {
         console.error("Error fetching team", err);
@@ -47,64 +56,96 @@ export function useTeam(user, currentRole) {
     if (currentRole === 'admin') {
       fetchTeam();
     } else {
-        setLoading(false);
+      setLoading(false);
     }
   }, [user, currentRole]);
 
-  const createEmployee = async (email, password) => {
+  /**
+   * Crea un miembro del equipo con el rol indicado.
+   * @param {string} email
+   * @param {string} password
+   * @param {'admin_secundario'|'empleado'|'contador'} memberRole
+   */
+  const createEmployee = async (email, password, memberRole = 'empleado') => {
+    const role = VALID_MEMBER_ROLES.includes(memberRole) ? memberRole : 'empleado';
+
     if (isMock) {
-        if(team.length >= 4) throw new Error("Límite de empleados alcanzado (Máx. 4)");
-        setTeam(prev => [...prev, { id: Date.now().toString(), email, role: 'empleado', createdAt: new Date().toISOString() }]);
-        return;
+      if (team.length >= MAX_TEAM_EMPRESA)
+        throw new Error(`Límite de ${MAX_TEAM_EMPRESA} integrantes alcanzado.`);
+      setTeam(prev => [...prev, { id: Date.now().toString(), email, role, createdAt: new Date().toISOString() }]);
+      return;
     }
 
-    if (team.length >= 4) {
-      throw new Error("Has alcanzado el límite máximo de 4 empleados permitidos en tu cuenta.");
-    }
+    if (team.length >= MAX_TEAM_EMPRESA)
+      throw new Error(`Has alcanzado el límite máximo de ${MAX_TEAM_EMPRESA} integrantes permitidos en el plan Empresa.`);
 
     try {
-      // 1. Crear el usuario en Firebase Auth (Secondary)
+      // 1. Crear usuario en Firebase Auth (usando app secundaria para no desloguear al admin)
       const credential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
-      // Salir inmediatamente de la app secundaria
       await signOut(secondaryAuth);
 
       const newUid = credential.user.uid;
 
-      // 2. Inscribir al empleado en la DB (usando credenciales primarias, Firestore Rules lo permite ahora)
+      // 2. Calcular expiración heredada del admin dueño
+      let adminPeriodEnd = null;
+      try {
+        const { getDoc } = await import('firebase/firestore');
+        const adminSnap = await getDoc(doc(db, 'users', user.tenantId));
+        if (adminSnap.exists()) adminPeriodEnd = adminSnap.data().currentPeriodEnd;
+      } catch (_) {}
+
+      // 3. Guardar en Firestore
       await setDoc(doc(db, 'users', newUid), {
-        email: email,
-        role: 'empleado',
-        tenantId: user.tenantId,
-        createdBy: user.email || user.uid,
-        createdAt: serverTimestamp()
+        email,
+        role,
+        tenantId:         user.tenantId,
+        createdBy:        user.email || user.uid,
+        createdAt:        serverTimestamp(),
+        currentPeriodEnd: adminPeriodEnd,   // sincronizado con el dueño
+        plan:             'empresa',         // hereda el plan del tenant
       });
 
-      // Actualizar vista local
-      setTeam(prev => [...prev, { id: newUid, email, role: 'empleado', createdAt: new Date().toISOString() }]);
+      setTeam(prev => [...prev, { id: newUid, email, role, createdAt: new Date().toISOString() }]);
 
     } catch (err) {
-      console.error("Error al crear empleado:", err);
-      if (err.code === 'auth/email-already-in-use') {
-         throw new Error("Este correo ya está registrado en FinanzasPro.");
-      } else if (err.code === 'auth/weak-password') {
-         throw new Error("La contraseña debe tener al menos 6 caracteres.");
-      }
-      throw new Error("No se pudo crear el empleado. " + err.message);
+      console.error("Error al crear integrante:", err);
+      if (err.code === 'auth/email-already-in-use')
+        throw new Error("Este correo ya está registrado en FinanzasPro.");
+      if (err.code === 'auth/weak-password')
+        throw new Error("La contraseña debe tener al menos 6 caracteres.");
+      throw new Error("No se pudo crear el integrante. " + err.message);
     }
   };
 
   const deleteEmployee = async (employeeId) => {
     if (isMock) {
-        setTeam(prev => prev.filter(e => e.id !== employeeId));
-        return;
+      setTeam(prev => prev.filter(e => e.id !== employeeId));
+      return;
     }
     try {
-        await deleteDoc(doc(db, 'users', employeeId));
-        setTeam(prev => prev.filter(e => e.id !== employeeId));
+      await deleteDoc(doc(db, 'users', employeeId));
+      setTeam(prev => prev.filter(e => e.id !== employeeId));
     } catch (err) {
-        throw new Error("No se pudo eliminar al empleado: " + err.message);
+      throw new Error("No se pudo eliminar al integrante: " + err.message);
     }
   };
 
-  return { team, loading, createEmployee, deleteEmployee };
+  /**
+   * Cambia el rol de un integrante existente.
+   */
+  const changeEmployeeRole = async (employeeId, newRole) => {
+    if (!VALID_MEMBER_ROLES.includes(newRole)) return;
+    if (isMock) {
+      setTeam(prev => prev.map(e => e.id === employeeId ? { ...e, role: newRole } : e));
+      return;
+    }
+    try {
+      await updateDoc(doc(db, 'users', employeeId), { role: newRole });
+      setTeam(prev => prev.map(e => e.id === employeeId ? { ...e, role: newRole } : e));
+    } catch (err) {
+      throw new Error("No se pudo cambiar el rol: " + err.message);
+    }
+  };
+
+  return { team, loading, createEmployee, deleteEmployee, changeEmployeeRole, maxTeam: MAX_TEAM_EMPRESA };
 }

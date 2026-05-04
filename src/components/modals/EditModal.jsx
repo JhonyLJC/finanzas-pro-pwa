@@ -5,7 +5,6 @@ export default function EditModal({ record, onSave, onClose, isReceivable = fals
   const [amount, setAmount] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [title, setTitle] = useState('');
-  const [client, setClient] = useState('');
   const [category, setCategory] = useState('');
   const [priority, setPriority] = useState('NORMAL');
   const [note, setNote] = useState('');
@@ -16,8 +15,7 @@ export default function EditModal({ record, onSave, onClose, isReceivable = fals
       setAmount(record.amount?.toString() || '');
       setDueDate(record.dueDate || '');
       setTitle(record.title || '');
-      setClient(record.client || '');
-      setCategory(record.category || 'Varios');
+      setCategory(record.category || (isReceivable ? 'Otros' : 'Varios'));
       setPriority(record.priority || 'NORMAL');
       setNote(record.note || '');
     }
@@ -35,7 +33,7 @@ export default function EditModal({ record, onSave, onClose, isReceivable = fals
       title: title || record.title,
       priority,
       note,
-      ...(isReceivable ? { client: client || record.client } : { category }),
+      category,
     });
     setIsSaving(false);
     onClose();
@@ -74,38 +72,23 @@ export default function EditModal({ record, onSave, onClose, isReceivable = fals
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            {/* Cliente (solo cobros) */}
-            {isReceivable && (
-              <div className="col-span-2">
-                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Cliente</label>
-                <input
-                  type="text"
-                  value={client}
-                  onChange={e => setClient(e.target.value)}
-                  className="w-full p-3 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-colors"
-                />
-              </div>
-            )}
-
-            {/* Categoría (solo pagos) */}
-            {!isReceivable && (
-              <div className="col-span-2">
-                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Categoría</label>
-                <select
-                  value={category}
-                  onChange={e => setCategory(e.target.value)}
-                  className="w-full p-3 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-colors"
-                >
-                  <option value="Varios">Varios</option>
-                  {categories.filter(c => c !== 'Varios').map(c => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                  {category && category !== 'Varios' && !categories.includes(category) && (
-                    <option value={category}>{category}</option>
-                  )}
-                </select>
-              </div>
-            )}
+            {/* Categoría */}
+            <div className="col-span-2">
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Categoría</label>
+              <select
+                value={category}
+                onChange={e => setCategory(e.target.value)}
+                className="w-full p-3 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-colors"
+              >
+                <option value={isReceivable ? 'Otros' : 'Varios'}>{isReceivable ? 'Otros' : 'Varios'}</option>
+                {categories.filter(c => c !== 'Varios' && c !== 'Otros').map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+                {category && category !== 'Varios' && category !== 'Otros' && !categories.includes(category) && (
+                  <option value={category}>{category}</option>
+                )}
+              </select>
+            </div>
 
             {/* Monto */}
             <div>

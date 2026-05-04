@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, CheckCircle2, Trash2, Paperclip, Edit3, TrendingUp, Wallet, Info } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, Trash2, Edit3, TrendingUp, Wallet, Info, FileSpreadsheet, ChevronDown } from 'lucide-react';
 
 export default function CalendarView({
   payments, receivables = [],
@@ -11,6 +11,45 @@ export default function CalendarView({
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [deletingPaymentId, setDeletingPaymentId] = useState(null);
   const [deletingReceivableId, setDeletingReceivableId] = useState(null);
+
+  const exportMonthCSV = () => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth() + 1;
+    const allItems = [
+      ...payments.map(p => ({ ...p, _type: 'payment' })),
+      ...receivables.map(r => ({ ...r, _type: 'receivable' }))
+    ].filter(item => {
+      const [y, m] = (item.dueDate || '').split('-').map(Number);
+      return y === year && m === month;
+    });
+
+    if (allItems.length === 0) { alert('No hay movimientos para este mes.'); return; }
+
+    const BOM = '\uFEFF';
+    const headers = 'Tipo,Concepto,Categoría,Monto,Vencimiento,Estado,Creado Por\n';
+    const rows = allItems.map(item => {
+      const type = item._type === 'receivable' ? 'Cobro' : 'Pago';
+      const status = item._type === 'receivable' ? (item.isCollected ? 'Cobrado' : 'Pendiente') : (item.isPaid ? 'Pagado' : 'Pendiente');
+      return [
+        type,
+        `"${(item.title || '').replace(/"/g, '""')}"`,
+        `"${(item.category || '').replace(/"/g, '""')}"`,
+        Number(item.amount || 0).toFixed(2),
+        item.dueDate || '',
+        status,
+        `"${(item.createdBy || 'Sistema').replace(/"/g, '""')}"`
+      ].join(',');
+    }).join('\n');
+
+    const blob = new Blob([BOM + headers + rows], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    const monthLabel = currentMonth.toLocaleDateString('es-PE', { month: 'long', year: 'numeric' });
+    link.download = `Calendario_${monthLabel.replace(' ', '-')}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const handleDeletePayment = async (id) => {
     setDeletingPaymentId(id);
@@ -60,7 +99,12 @@ export default function CalendarView({
       <div className="md:col-span-4 lg:col-span-5">
         <div className="flex items-center justify-between mb-4 px-2">
           <h4 className="capitalize font-bold text-slate-800 dark:text-slate-100">{monthName}</h4>
-          <div className="flex gap-1">
+          <div className="flex gap-1 items-center">
+            <button onClick={exportMonthCSV}
+              title="Exportar mes como CSV"
+              className="p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg transition-colors">
+              <FileSpreadsheet size={16} />
+            </button>
             <button onClick={() => changeMonth(-1)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400 transition-colors">
               <ChevronLeft size={18} />
             </button>
@@ -191,7 +235,7 @@ export default function CalendarView({
                   </div>
                 </div>
                 <p className="font-bold text-slate-800 dark:text-slate-100 text-xs">{r.title}</p>
-                {r.client && <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5">{r.client}</p>}
+                {r.category && <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5">{r.category}</p>}
                 <p className="text-emerald-600 dark:text-emerald-500 font-bold text-sm mt-1">S/ {Number(r.amount).toLocaleString()}</p>
                 {permissions?.canMarkCollected && (
                   <button onClick={() => onCheckReceivable(r)}

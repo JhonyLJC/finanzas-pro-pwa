@@ -1,17 +1,23 @@
 import React, { useState } from 'react';
-import { Home, Calendar, List, ClipboardList, Crown, ShieldCheck, X, TrendingUp, Settings, ChevronLeft, ChevronRight, ListChecks, Users } from 'lucide-react';
+import { Home, Calendar, List, ClipboardList, Crown, ShieldCheck, X, Settings, ChevronLeft, ChevronRight, ListChecks, Users } from 'lucide-react';
+import logoImg from '../../assets/logo.png';
 
-export default function Sidebar({ isOpen, setIsOpen, view, setView, isAdmin, setIsSettingsOpen }) {
+export default function Sidebar({ isOpen, setIsOpen, view, setView, isAdmin, setIsSettingsOpen, permissions }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const menuItems = [
-    { id: 'home', label: 'Inicio', icon: <Home size={20} /> },
-    { id: 'calendar', label: 'Calendario', icon: <Calendar size={20} /> },
-    { id: 'paymentList', label: 'Pagos Pendientes', icon: <List size={20} /> },
-    { id: 'receivableList', label: 'Cobros Pendientes', icon: <ListChecks size={20} /> },
-    { id: 'records', label: 'Registros', icon: <ClipboardList size={20} /> },
-    { id: 'subscription', label: 'Planes Premium', icon: <Crown size={20} /> }
+  const isContador = permissions?.isContador;
+
+  // Contador solo ve: Registros y Planes
+  const allMenuItems = [
+    { id: 'home',           label: 'Inicio',           icon: <Home size={20} />,           hide: isContador },
+    { id: 'calendar',       label: 'Calendario',        icon: <Calendar size={20} />,       hide: isContador },
+    { id: 'paymentList',    label: 'Pagos Pendientes',  icon: <List size={20} />,           hide: isContador },
+    { id: 'receivableList', label: 'Cobros Pendientes', icon: <ListChecks size={20} />,     hide: isContador },
+    { id: 'records',        label: 'Registros',         icon: <ClipboardList size={20} /> },
+    { id: 'subscription',   label: 'Planes Premium',    icon: <Crown size={20} /> },
   ];
+
+  const menuItems = allMenuItems.filter(i => !i.hide);
 
   if (isAdmin) {
     menuItems.push({ id: 'team', label: 'Mi Equipo', icon: <Users size={20} /> });
@@ -45,8 +51,8 @@ export default function Sidebar({ isOpen, setIsOpen, view, setView, isAdmin, set
         {/* Header */}
         <div className={`h-[65px] flex items-center px-4 border-b border-slate-200 dark:border-white/5 ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
            <div className={`flex items-center gap-2 ${isCollapsed ? 'hidden text-transparent' : 'w-auto'}`}>
-            <div className="bg-blue-600 dark:bg-blue-500 p-1.5 rounded-lg text-white shrink-0">
-                <TrendingUp size={18} />
+            <div className="w-9 h-9 rounded-xl bg-white shadow-sm flex items-center justify-center overflow-hidden p-1 shrink-0">
+              <img src={logoImg} alt="FinanzasPro" className="w-full h-full object-contain" />
             </div>
             <span className="font-black text-lg tracking-tight dark:text-white truncate">FinanzasPro</span>
            </div>

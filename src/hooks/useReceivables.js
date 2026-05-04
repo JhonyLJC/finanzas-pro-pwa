@@ -13,42 +13,32 @@ export function useReceivables(user) {
 
   const [loading, setLoading] = useState(!isMock);
 
-  const getSavedClientsKey = () => `finanzaspro_savedClients_${user?.tenantId || user?.uid || 'local'}`;
+  const getCategoriesKey = () => `finanzaspro_receivable_categories_${user?.tenantId || user?.uid || 'local'}`;
 
-  // Lista persistente de clientes guardados (guardada en localStorage)
-  const [savedClients, setSavedClients] = useState(() => {
+  const [categories, setCategories] = useState(() => {
     try {
-      const stored = localStorage.getItem(getSavedClientsKey());
-      return stored ? JSON.parse(stored) : [];
-    } catch { return []; }
+      const stored = localStorage.getItem(getCategoriesKey());
+      return stored ? JSON.parse(stored) : ['Alquiler', 'Inversion', 'Ventas', 'Servicios', 'Sueldo', 'Otros'];
+    } catch { return ['Alquiler', 'Inversion', 'Ventas', 'Servicios', 'Sueldo', 'Otros']; }
   });
 
   useEffect(() => {
-    const key = getSavedClientsKey();
+    const key = getCategoriesKey();
     try {
       const stored = localStorage.getItem(key);
       if (stored) {
-        setSavedClients(JSON.parse(stored));
+        setCategories(JSON.parse(stored));
       } else {
-        setSavedClients([]);
+        setCategories(['Alquiler', 'Inversion', 'Ventas', 'Servicios', 'Sueldo', 'Otros']);
       }
     } catch {
-      setSavedClients([]);
+      setCategories(['Alquiler', 'Inversion', 'Ventas', 'Servicios', 'Sueldo', 'Otros']);
     }
   }, [user]);
 
   useEffect(() => {
-    localStorage.setItem(getSavedClientsKey(), JSON.stringify(savedClients));
-  }, [savedClients, user]);
-
-  const addSavedClient = (name) => {
-    if (!name || !name.trim()) return;
-    setSavedClients(prev => [...new Set([...prev, name.trim()])].sort());
-  };
-
-  const removeSavedClient = (name) => {
-    setSavedClients(prev => prev.filter(c => c !== name));
-  };
+    localStorage.setItem(getCategoriesKey(), JSON.stringify(categories));
+  }, [categories, user]);
 
   // Sync Mocks
   useEffect(() => {
@@ -101,10 +91,7 @@ export function useReceivables(user) {
     return { PEN: calc() };
   }, [receivables]);
 
-  // Clients extractor
-  const clients = useMemo(() => {
-    return [...new Set(receivables.map(r => r.client).filter(Boolean))].sort();
-  }, [receivables]);
+
 
   // CRUD base
   const addReceivable = async (formData) => {
@@ -188,7 +175,7 @@ export function useReceivables(user) {
 
       const newRec = {
         title: receivable.title,
-        client: receivable.client || 'General',
+        category: receivable.category || 'Otros',
         amount: Number(receivable.originalAmount || receivable.amount),
         originalAmount: Number(receivable.originalAmount || receivable.amount),
         recurrenceMode: receivable.recurrenceMode,
@@ -224,7 +211,7 @@ export function useReceivables(user) {
   const addPartialReceivable = async (receivable, inputAmount) => {
     const newRec = {
       title: `[Abono] ${receivable.title}`,
-      client: receivable.client || 'General',
+      category: receivable.category || 'Otros',
       amount: inputAmount,
       originalAmount: inputAmount,
       recurrenceMode: 'none',
@@ -234,10 +221,11 @@ export function useReceivables(user) {
       tenantId: receivable.tenantId || user?.tenantId || 'local',
       voucherUrl: null
     };
+    const remaining = receivable.amount - inputAmount;
 
     if (isMock) {
       setReceivables(prev => {
-        const updated = prev.map(r => r.id === receivable.id ? { ...r, amount: r.amount - inputAmount, originalAmount: r.originalAmount || r.amount } : r);
+        const updated = prev.map(r => r.id === receivable.id ? { ...r, amount: remaining, originalAmount: remaining } : r);
         return [...updated, {
           id: Date.now().toString() + Math.random().toString().slice(2,5),
           ...newRec,
@@ -250,7 +238,7 @@ export function useReceivables(user) {
       const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'receivables', receivable.id);
       const receivablesRef = collection(db, 'artifacts', appId, 'public', 'data', 'receivables');
       await Promise.all([
-        updateDoc(docRef, { amount: receivable.amount - inputAmount, originalAmount: receivable.originalAmount || receivable.amount, updatedAt: serverTimestamp() }),
+        updateDoc(docRef, { amount: remaining, originalAmount: remaining, updatedAt: serverTimestamp() }),
         addDoc(receivablesRef, { ...newRec, createdBy: user.email || user.uid, createdAt: serverTimestamp(), updatedBy: user.email || user.uid })
       ]);
     }
@@ -281,10 +269,8 @@ export function useReceivables(user) {
     todayOnlyReceivables,
     overdueReceivables,
     stats,
-    clients,
-    savedClients,
-    addSavedClient,
-    removeSavedClient,
+    receivableCategories: categories,
+    setReceivableCategories: setCategories,
     addReceivable,
     deleteReceivable,
     toggleCollected,

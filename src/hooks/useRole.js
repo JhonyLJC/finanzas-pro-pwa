@@ -2,37 +2,64 @@
  * useRole — Hook de Permisos por Rol
  *
  * Roles disponibles:
- *  - 'admin'    → Acceso total (crear, editar, eliminar, marcar pagado)
- *  - 'empleado' → Solo ver, crear pagos y marcar pagado (NO eliminar)
+ *  - 'admin'            → Dueño. Acceso total.
+ *  - 'admin_secundario' → Como admin pero sin gestión de equipo/suscripción.
+ *  - 'empleado'         → Ver, crear pagos y marcar pagado. No eliminar.
+ *  - 'contador'         → Solo ver registros y descargar Excel (plan empresa).
  */
 export function useRole(role, isExpired = false, plan = 'trial') {
-  const isAdmin = role === 'admin';
+  const isAdmin        = role === 'admin';
+  const isAdminSecund  = role === 'admin_secundario';
+  const isEmpleado     = role === 'empleado';
+  const isContador     = role === 'contador';
+
+  // Admins (primary + secondary) comparten la mayoría de operaciones
+  const isAnyAdmin = isAdmin || isAdminSecund;
+
+  const isEmpresa = plan === 'empresa';
 
   return {
-    // Permisos específicos (bloqueados en modo lectura si expiró)
-    canDelete:         !isExpired && isAdmin,
-    canCreate:         !isExpired && (isAdmin || role === 'empleado'),
-    canEdit:           !isExpired && (isAdmin || role === 'empleado'),
-    canMarkPaid:       !isExpired && (isAdmin || role === 'empleado'),
-    canManageCategories: isAdmin,
-    canExport:         isAdmin,
-    canExportExcel:    isAdmin && plan === 'empresa',
-    canFilterList:     plan === 'empresa',
-    canViewRecords:    isAdmin || role === 'empleado',
-    canAttachVoucher:  !isExpired && isAdmin,
-    canCreateEmployees: isAdmin && (plan === 'negocio' || plan === 'empresa'),
+    // ── Pagos ──────────────────────────────────────────────────────────────
+    canDelete:            !isExpired && isAnyAdmin,
+    canCreate:            !isExpired && (isAnyAdmin || isEmpleado),
+    canEdit:              !isExpired && (isAnyAdmin || isEmpleado),
+    canMarkPaid:          !isExpired && (isAnyAdmin || isEmpleado),
+    canAttachVoucher:     !isExpired && isAnyAdmin,
+    canManageCategories:  isAnyAdmin,
 
-    // Permisos de cobros (bloqueados en modo lectura si expiró)
-    canCreateReceivable: !isExpired && (isAdmin || role === 'empleado'),
-    canDeleteReceivable: !isExpired && isAdmin,
-    canMarkCollected:    !isExpired && (isAdmin || role === 'empleado'),
+    // ── Cobros ─────────────────────────────────────────────────────────────
+    canCreateReceivable:  !isExpired && (isAnyAdmin || isEmpleado),
+    canDeleteReceivable:  !isExpired && isAnyAdmin,
+    canMarkCollected:     !isExpired && (isAnyAdmin || isEmpleado),
 
-    // Shorthand general
+    // ── Exportación Excel — SOLO plan empresa ──────────────────────────────
+    canExport:            isAnyAdmin,
+    canExportExcel:       (isAnyAdmin || isContador) && isEmpresa,
+
+    // ── Filtros / Vistas ───────────────────────────────────────────────────
+    canFilterList:        isEmpresa,
+    canViewRecords:       isAnyAdmin || isEmpleado || isContador,
+
+    // ── Gestión de equipo ─ Solo admin dueño plan empresa ──────────────────
+    canCreateEmployees:   isAdmin && isEmpresa,
+    canManageTeam:        isAdmin && isEmpresa,
+
+    // ── Shorthand de roles ─────────────────────────────────────────────────
     isAdmin,
-    isEmpleado: role === 'empleado',
+    isAdminSecund,
+    isEmpleado,
+    isContador,
+    isAnyAdmin,
     role: role || 'sin_rol',
 
-    // Helper para obtener etiqueta de rol en español
-    roleLabel: role === 'admin' ? 'Administrador' : role === 'empleado' ? 'Empleado' : 'Sin rol',
+    roleLabel: role === 'admin'
+      ? 'Administrador'
+      : role === 'admin_secundario'
+      ? 'Admin Secundario'
+      : role === 'empleado'
+      ? 'Empleado'
+      : role === 'contador'
+      ? 'Contador'
+      : 'Sin rol',
   };
 }

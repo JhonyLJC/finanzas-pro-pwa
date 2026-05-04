@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { CheckCircle2, AlertCircle, User, Clock, FileSpreadsheet, Lock, ChevronDown } from 'lucide-react';
+import { CheckCircle2, AlertCircle, User, Clock, FileSpreadsheet, ChevronDown, Lock } from 'lucide-react';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -76,7 +76,7 @@ function exportToExcel(records, selectedMonth) {
     return [
       type,
       `"${(r.title || '').replace(/"/g, '""')}"`,
-      `"${(r.client || r.createdBy || '').replace(/"/g, '""')}"`,
+      `"${(r.category || r.createdBy || '').replace(/"/g, '""')}"`,
       Number(r.amount || 0).toFixed(2),
       r.dueDate || '',
       dateStr,
@@ -155,10 +155,10 @@ function TimelineEntry({ record }) {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-400 dark:text-slate-500 mt-1.5">
-            {isReceivable && record.client && <span className="font-medium text-emerald-600 dark:text-emerald-400">{record.client}</span>}
+            {isReceivable && record.category && <span className="font-medium text-emerald-600 dark:text-emerald-400">{record.category}</span>}
             {time && <span className="flex items-center gap-1"><Clock size={10} /> {time}</span>}
             <span className="flex items-center gap-1"><User size={10} /> {record.createdBy || 'Sistema'}</span>
-            {record.category && <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{record.category}</span>}
+            {!isReceivable && record.category && <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{record.category}</span>}
           </div>
         </div>
       </div>
@@ -238,28 +238,26 @@ export default function RecordsView({ payments, receivables = [], permissions })
           <p className="text-xs text-slate-400 mt-0.5">Ordenados del más reciente al más antiguo</p>
         </div>
 
-        {/* Export button — empresa plan only */}
         <div className="flex items-center gap-2">
+          <div className="relative">
+            <select
+              value={selectedMonth}
+              onChange={e => setSelectedMonth(e.target.value)}
+              className="appearance-none pl-3 pr-8 py-2 text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer">
+              {monthOptions.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
+            </select>
+            <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          </div>
           {permissions?.canExportExcel ? (
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <select
-                  value={selectedMonth}
-                  onChange={e => setSelectedMonth(e.target.value)}
-                  className="appearance-none pl-3 pr-8 py-2 text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer">
-                  {monthOptions.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
-                </select>
-                <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              </div>
-              <button onClick={() => exportToExcel(allRecords, selectedMonth)}
-                className="flex items-center gap-2 px-3 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-colors shadow-sm">
-                <FileSpreadsheet size={14} /> Exportar Excel
-              </button>
-            </div>
+            <button onClick={() => exportToExcel(allRecords, selectedMonth)}
+              className="flex items-center gap-2 px-3 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-colors shadow-sm">
+              <FileSpreadsheet size={14} /> Exportar Mes
+            </button>
           ) : (
-            <div className="flex items-center gap-1.5 px-3 py-2 border border-dashed border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-400 cursor-not-allowed"
-              title="Disponible en Plan Empresa">
-              <Lock size={11} /> <FileSpreadsheet size={13} /> Exportar Excel (Plan Empresa)
+            <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 text-xs font-bold rounded-lg border border-slate-200 dark:border-slate-700 cursor-not-allowed" title="Solo disponible en el Plan Empresa">
+              <Lock size={13} />
+              <span>Exportar Excel</span>
+              <span className="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wide">Empresa</span>
             </div>
           )}
         </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Settings, Trash2, User, LogOut, Moon, Sun, Crown, ChevronRight, Mail, MessageCircle, HelpCircle, Lightbulb } from 'lucide-react';
+import { Plus, Settings, User, LogOut, Moon, Sun, Crown, ChevronRight, Mail, MessageCircle, HelpCircle, Lightbulb, Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import { isMock } from '../../lib/firebase';
 
 export default function SettingsModal({
@@ -7,15 +7,49 @@ export default function SettingsModal({
     categories, setCategories,
     isDarkMode, setIsDarkMode,
     user, role, subscription,
-    onLogout, setView
+    onLogout, setView,
+    changePassword
 }) {
     const [newCategory, setNewCategory] = useState('');
+    const [currentPwd, setCurrentPwd] = useState('');
+    const [newPwd, setNewPwd] = useState('');
+    const [confirmPwd, setConfirmPwd] = useState('');
+    const [showCurrentPwd, setShowCurrentPwd] = useState(false);
+    const [showNewPwd, setShowNewPwd] = useState(false);
+    const [pwdLoading, setPwdLoading] = useState(false);
+    const [pwdError, setPwdError] = useState('');
+    const [pwdSuccess, setPwdSuccess] = useState(false);
 
     if (!isSettingsOpen) return null;
 
     const handleNavigateToSubscription = () => {
         setView('subscription');
         setIsSettingsOpen(false);
+    };
+
+    const handleChangePassword = async (e) => {
+        e.preventDefault();
+        setPwdError('');
+        setPwdSuccess(false);
+        if (newPwd.length < 6) { setPwdError('La nueva contraseña debe tener al menos 6 caracteres.'); return; }
+        if (newPwd !== confirmPwd) { setPwdError('Las contraseñas nuevas no coinciden.'); return; }
+        setPwdLoading(true);
+        try {
+            await changePassword(currentPwd, newPwd);
+            setPwdSuccess(true);
+            setCurrentPwd(''); setNewPwd(''); setConfirmPwd('');
+            setTimeout(() => setPwdSuccess(false), 4000);
+        } catch (err) {
+            const msgs = {
+                'auth/wrong-password': 'La contraseña actual es incorrecta.',
+                'auth/invalid-credential': 'La contraseña actual es incorrecta.',
+                'auth/requires-recent-login': 'Sesión caducada. Cierra sesión e ingresa de nuevo.',
+                'auth/weak-password': 'La nueva contraseña es muy débil.',
+            };
+            setPwdError(msgs[err.code] || err.message || 'Error al cambiar la contraseña.');
+        } finally {
+            setPwdLoading(false);
+        }
     };
 
     return (
@@ -81,7 +115,72 @@ export default function SettingsModal({
                         </div>
                     </section>
 
-                    {/* 2. Preferencias */}
+                    {/* 2b. Cambiar Contraseña (solo si no es mock y tiene changePassword) */}
+                    {!isMock && changePassword && (
+                    <section className="space-y-3">
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">Seguridad</h4>
+                        <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 rounded-2xl p-4 space-y-3">
+                            <div className="flex items-center gap-2 mb-1">
+                                <Lock size={16} className="text-slate-500" />
+                                <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Cambiar contraseña</span>
+                            </div>
+                            {pwdSuccess && (
+                                <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-xl text-sm font-semibold">
+                                    <CheckCircle2 size={16} /> Contraseña actualizada correctamente.
+                                </div>
+                            )}
+                            {pwdError && (
+                                <p className="text-xs text-red-500 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg font-medium">{pwdError}</p>
+                            )}
+                            <form onSubmit={handleChangePassword} className="space-y-2.5">
+                                {/* Contraseña actual */}
+                                <div className="relative">
+                                    <input
+                                        type={showCurrentPwd ? 'text' : 'password'}
+                                        placeholder="Contraseña actual"
+                                        value={currentPwd} onChange={e => setCurrentPwd(e.target.value)}
+                                        required
+                                        className="w-full pr-10 pl-3 py-2.5 text-sm bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-colors"
+                                    />
+                                    <button type="button" onClick={() => setShowCurrentPwd(!showCurrentPwd)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                        {showCurrentPwd ? <EyeOff size={15} /> : <Eye size={15} />}
+                                    </button>
+                                </div>
+                                {/* Nueva contraseña */}
+                                <div className="relative">
+                                    <input
+                                        type={showNewPwd ? 'text' : 'password'}
+                                        placeholder="Nueva contraseña (mín. 6 car.)"
+                                        value={newPwd} onChange={e => setNewPwd(e.target.value)}
+                                        required
+                                        className="w-full pr-10 pl-3 py-2.5 text-sm bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-colors"
+                                    />
+                                    <button type="button" onClick={() => setShowNewPwd(!showNewPwd)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                        {showNewPwd ? <EyeOff size={15} /> : <Eye size={15} />}
+                                    </button>
+                                </div>
+                                {/* Confirmar contraseña */}
+                                <input
+                                    type="password"
+                                    placeholder="Confirmar nueva contraseña"
+                                    value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)}
+                                    required
+                                    className="w-full pl-3 py-2.5 text-sm bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-colors"
+                                />
+                                <button type="submit" disabled={pwdLoading}
+                                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-60 shadow-[0_4px_12px_rgba(59,130,246,0.3)]">
+                                    {pwdLoading
+                                        ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        : <><Lock size={14} /> Actualizar contraseña</>}
+                                </button>
+                            </form>
+                        </div>
+                    </section>
+                    )}
+
+                    {/* 3. Preferencias */}
                     <section className="space-y-3">
                         <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">Preferencias</h4>
                         <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 rounded-2xl overflow-hidden">

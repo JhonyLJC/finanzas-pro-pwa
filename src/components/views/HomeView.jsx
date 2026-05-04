@@ -1,9 +1,8 @@
 import React from 'react';
-import { Calendar, Wallet, ListChecks, Lightbulb } from 'lucide-react';
+import { Calendar, Wallet, ListChecks } from 'lucide-react';
 import Collapsible from '../ui/Collapsible';
 import CashFlowCard from '../dashboard/CashFlowCard';
 import PrioritySection from '../dashboard/PrioritySection';
-import DayInsights from '../dashboard/DayInsights';
 import { useDashboard } from '../../hooks/useDashboard';
 
 export default function HomeView({ paymentsApi, receivablesApi, permissions, subscription, onInfo }) {
@@ -30,11 +29,20 @@ export default function HomeView({ paymentsApi, receivablesApi, permissions, sub
 
   if (loading) return null;
 
-  const priorityPayments = [...paymentsApi.overduePayments, ...paymentsApi.todayOnlyPayments];
-  const priorityPaymentsTotal = priorityPayments.reduce((acc, p) => acc + Number(p.amount || 0), 0);
+  const todayDateStr = new Date().toLocaleDateString('en-CA');
+  const next3DaysDate = new Date();
+  next3DaysDate.setDate(next3DaysDate.getDate() + 3);
+  const next3DaysStr = next3DaysDate.toLocaleDateString('en-CA');
 
-  const priorityReceivables = [...receivablesApi.overdueReceivables, ...receivablesApi.todayOnlyReceivables];
-  const priorityReceivablesTotal = priorityReceivables.reduce((acc, r) => acc + Number(r.amount || 0), 0);
+  const overduePayments = paymentsApi.overduePayments || [];
+  const upcomingPayments = (paymentsApi.payments || []).filter(p => !p.isPaid && p.dueDate >= todayDateStr && p.dueDate <= next3DaysStr);
+  const overdueReceivables = receivablesApi.overdueReceivables || [];
+  const upcomingReceivables = (receivablesApi.receivables || []).filter(r => !r.isCollected && r.dueDate >= todayDateStr && r.dueDate <= next3DaysStr);
+
+  const overduePaymentsTotal = overduePayments.reduce((acc, p) => acc + Number(p.amount || 0), 0);
+  const upcomingPaymentsTotal = upcomingPayments.reduce((acc, p) => acc + Number(p.amount || 0), 0);
+  const overdueReceivablesTotal = overdueReceivables.reduce((acc, r) => acc + Number(r.amount || 0), 0);
+  const upcomingReceivablesTotal = upcomingReceivables.reduce((acc, r) => acc + Number(r.amount || 0), 0);
 
   return (
     <div className="space-y-2">
@@ -52,82 +60,89 @@ export default function HomeView({ paymentsApi, receivablesApi, permissions, sub
        </div>
 
        <CashFlowCard 
-          toPay={pending.toPay} 
-          toCollect={pending.toCollect} 
-          balance={pending.balance} 
-          paymentsCount={pending.paymentsCount} 
-          receivablesCount={pending.receivablesCount} 
+          pending={pending} 
+          month={month} 
        />
 
-       <div className="mt-8">
+       <div className="mt-8 space-y-6">
+           {/* 1. PAGOS VENCIDOS */}
            <Collapsible 
-             title="PRIORIDAD PAGOS" 
-             icon={<Wallet size={18} />} 
+             title="PAGOS VENCIDOS" 
+             icon={<Wallet size={18} className="text-red-500" />} 
              defaultOpen={true}
              extra={
-               <span className="bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 font-bold px-2 py-0.5 rounded-md text-xs">
-                 S/ {priorityPaymentsTotal.toLocaleString()}
+               <span className="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 font-bold px-2 py-0.5 rounded-md text-xs">
+                 S/ {overduePaymentsTotal.toLocaleString()}
                </span>
              }
            >
               <PrioritySection 
                  type="payment" 
-                 items={priorityPayments} 
+                 items={overduePayments} 
                  permissions={permissions} 
                  onAction={paymentsApi.onAction || paymentsApi.togglePaid} 
                  onInfo={onInfo}
               />
            </Collapsible>
 
+           {/* 2. PAGOS POR VENCER */}
            <Collapsible 
-             title="PRIORIDAD COBROS" 
-             icon={<ListChecks size={18} />} 
+             title="PAGOS POR VENCER" 
+             icon={<Wallet size={18} className="text-orange-500" />} 
              defaultOpen={true}
              extra={
-               <span className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 font-bold px-2 py-0.5 rounded-md text-xs">
-                 S/ {priorityReceivablesTotal.toLocaleString()}
+               <span className="bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400 font-bold px-2 py-0.5 rounded-md text-xs">
+                 S/ {upcomingPaymentsTotal.toLocaleString()}
+               </span>
+             }
+           >
+              <PrioritySection 
+                 type="payment" 
+                 items={upcomingPayments} 
+                 permissions={permissions} 
+                 onAction={paymentsApi.onAction || paymentsApi.togglePaid} 
+                 onInfo={onInfo}
+              />
+           </Collapsible>
+
+           {/* 3. COBROS VENCIDOS */}
+           <Collapsible 
+             title="COBROS VENCIDOS" 
+             icon={<ListChecks size={18} className="text-red-500" />} 
+             defaultOpen={true}
+             extra={
+               <span className="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 font-bold px-2 py-0.5 rounded-md text-xs">
+                 S/ {overdueReceivablesTotal.toLocaleString()}
                </span>
              }
            >
               <PrioritySection 
                  type="receivable" 
-                 items={priorityReceivables} 
+                 items={overdueReceivables} 
                  permissions={{ ...permissions, canMarkPaid: permissions.canMarkCollected }} 
                  onAction={receivablesApi.onAction || receivablesApi.toggleCollected} 
                  onInfo={onInfo}
               />
            </Collapsible>
 
-           {insights && insights.length > 0 && (
-             <Collapsible title="INSIGHT DÍA" icon={<Lightbulb size={18} />} defaultOpen={true}>
-                <DayInsights insights={insights} />
-             </Collapsible>
-           )}
-
-           <Collapsible title="RESUMEN MES" icon={<Calendar size={18} />} defaultOpen={false}>
-               <div className="p-4 space-y-4">
-                 <div>
-                   <div className="flex justify-between text-sm mb-1">
-                      <span className="text-slate-500 dark:text-slate-400 font-bold">Por Pagar</span>
-                      <span className="font-black text-slate-800 dark:text-slate-200">S/ {Number(month.toPay).toLocaleString()}</span>
-                   </div>
-                   <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2">
-                     <div className="bg-red-500 h-2 rounded-full transition-all duration-500" style={{ width: `${month.toPay > 0 ? (month.paid / month.toPay) * 100 : 0}%`}}></div>
-                   </div>
-                   <p className="text-right text-[10px] mt-1 text-slate-400">Pagado: S/ {Number(month.paid).toLocaleString()} ({(month.toPay > 0 ? (month.paid / month.toPay) * 100 : 0).toFixed(0)}%)</p>
-                 </div>
-                 
-                 <div>
-                   <div className="flex justify-between text-sm mb-1">
-                      <span className="text-slate-500 dark:text-slate-400 font-bold">Por Cobrar</span>
-                      <span className="font-black text-slate-800 dark:text-slate-200">S/ {Number(month.toCollect).toLocaleString()}</span>
-                   </div>
-                   <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2">
-                     <div className="bg-emerald-500 h-2 rounded-full transition-all duration-500" style={{ width: `${month.toCollect > 0 ? (month.collected / month.toCollect) * 100 : 0}%`}}></div>
-                   </div>
-                   <p className="text-right text-[10px] mt-1 text-slate-400">Cobrado: S/ {Number(month.collected).toLocaleString()} ({(month.toCollect > 0 ? (month.collected / month.toCollect) * 100 : 0).toFixed(0)}%)</p>
-                 </div>
-               </div>
+           {/* 4. COBROS POR VENCER */}
+           <Collapsible 
+             title="COBROS POR VENCER" 
+             icon={<ListChecks size={18} className="text-emerald-500" />} 
+             defaultOpen={true}
+             extra={
+               <span className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 font-bold px-2 py-0.5 rounded-md text-xs">
+                 S/ {upcomingReceivablesTotal.toLocaleString()}
+               </span>
+             }
+           >
+              <PrioritySection 
+                 type="receivable" 
+                 items={upcomingReceivables} 
+                 permissions={{ ...permissions, canMarkPaid: permissions.canMarkCollected }} 
+                 onAction={receivablesApi.onAction || receivablesApi.toggleCollected} 
+                 onInfo={onInfo}
+              />
            </Collapsible>
        </div>
     </div>

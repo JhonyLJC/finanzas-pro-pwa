@@ -22,80 +22,109 @@ export default function PrioritySection({ type = 'payment', items = [], permissi
     return `${d}/${m}/${y}`;
   };
 
-  // Orden personalizado: vencidos primero (más antiguo a más reciente), luego los de hoy
-  const sortedItems = [...items].sort((a, b) => {
-    if (a.dueDate < todayStr && b.dueDate >= todayStr) return -1;
-    if (a.dueDate >= todayStr && b.dueDate < todayStr) return 1;
-    return new Date(a.dueDate) - new Date(b.dueDate);
-  });
+  const overdueItems = items.filter(item => item.dueDate < todayStr).sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+  const todayItems = items.filter(item => item.dueDate === todayStr).sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+  const upcomingItems = items.filter(item => item.dueDate > todayStr).sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+
+  const isOnlyOverdue = overdueItems.length > 0 && todayItems.length === 0 && upcomingItems.length === 0;
+
+  const renderItem = (item, isOverdue, isToday) => {
+    const mainLabel = item.category || (isPayment ? 'Varios' : 'Otros');
+
+    return (
+      <div key={item.id} className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-xl border bg-white dark:bg-slate-900/60 transition-all shadow-sm
+          ${isOverdue ? 'border-red-200 dark:border-red-500/30' : 'border-orange-200 dark:border-orange-500/30'}`}>
+        
+          <div className="min-w-0 flex-1 w-full sm:w-auto">
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+                {isOverdue ? (
+                  <span className="text-[10px] font-black tracking-wider uppercase bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400 px-2 py-0.5 rounded-md flex items-center gap-1 shrink-0">
+                    <AlertCircle size={10} /> VENCIDO
+                  </span>
+                ) : isToday ? (
+                  <span className="text-[10px] font-black tracking-wider uppercase bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400 px-2 py-0.5 rounded-md flex items-center gap-1 shrink-0">
+                    HOY
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-black tracking-wider uppercase bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded-md flex items-center gap-1 shrink-0">
+                    PRÓXIMO
+                  </span>
+                )}
+                {item.priority === 'URGENTE' && <span className="text-[10px] font-black uppercase bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400 px-1.5 py-0.5 rounded-md">URGENTE</span>}
+                {item.priority === 'PRIORITARIO' && <span className="text-[10px] font-black uppercase bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded-md">PRIORITARIO</span>}
+                {item.priority === 'NORMAL' && <span className="text-[10px] font-black uppercase bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-400 px-1.5 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">NORMAL</span>}
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate ml-1">{mainLabel}</span>
+            </div>
+            
+            <h4 className="font-bold text-slate-800 dark:text-slate-100 leading-tight truncate">{item.title}</h4>
+            
+            <div className="flex flex-wrap items-center gap-3 mt-1.5 text-[11px] text-slate-400">
+                <span className="flex items-center gap-1 whitespace-nowrap"><CalendarClock size={11} /> {formatPeruvianDate(item.dueDate)}</span>
+                {item.createdBy && <span className="flex items-center gap-1 truncate"><User size={11} /> {item.createdBy.split('@')[0]}</span>}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto mt-2 sm:mt-0 pt-3 sm:pt-0 border-t border-slate-100 dark:border-slate-800 sm:border-0 shrink-0">
+            <div className="flex flex-col items-end">
+              <p className={`font-black text-base ${isOverdue ? 'text-red-600 dark:text-red-400' : 'text-orange-600 dark:text-orange-500'}`}>
+                S/ {Number(item.amount).toLocaleString()}
+              </p>
+              {item.originalAmount > item.amount && (
+                <span className="text-[10px] text-slate-400 line-through">
+                  S/ {Number(item.originalAmount).toLocaleString()}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+                <button onClick={() => onInfo && onInfo(item)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                  title="Ver Detalles">
+                  <Info size={16} />
+                </button>
+                {permissions?.canMarkPaid && (
+                  <button onClick={() => onAction && onAction(item)}
+                    className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm border
+                        ${isPayment 
+                          ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 dark:bg-amber-900/20 dark:border-amber-700/50 dark:text-amber-400 dark:hover:bg-amber-900/40' 
+                          : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-700/50 dark:text-emerald-400 dark:hover:bg-emerald-900/40'}`}
+                  >
+                    <CheckCircle2 size={14} /> {isPayment ? 'Pagar' : 'Cobrar'}
+                  </button>
+                )}
+            </div>
+          </div>
+      </div>
+    );
+  };
 
   return (
-    <div className="space-y-3">
-      {sortedItems.map(item => {
-        const isOverdue = item.dueDate < todayStr;
-        const mainLabel = isPayment ? item.category || 'Varios' : item.client || 'General';
-
-        return (
-          <div key={item.id} className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-xl border bg-white dark:bg-slate-900/60 transition-all shadow-sm
-              ${isOverdue ? 'border-red-200 dark:border-red-500/30' : 'border-orange-200 dark:border-orange-500/30'}`}>
-            
-             <div className="min-w-0 flex-1 w-full sm:w-auto">
-                <div className="flex items-center gap-2 flex-wrap mb-1">
-                   {isOverdue ? (
-                      <span className="text-[10px] font-black tracking-wider uppercase bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400 px-2 py-0.5 rounded-md flex items-center gap-1 shrink-0">
-                        <AlertCircle size={10} /> VENCIDO
-                      </span>
-                   ) : (
-                      <span className="text-[10px] font-black tracking-wider uppercase bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400 px-2 py-0.5 rounded-md flex items-center gap-1 shrink-0">
-                        HOY
-                      </span>
-                   )}
-                   {item.priority === 'URGENTE' && <span className="text-[10px] font-black uppercase bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400 px-1.5 py-0.5 rounded-md">URGENTE</span>}
-                   {item.priority === 'PRIORITARIO' && <span className="text-[10px] font-black uppercase bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded-md">PRIORITARIO</span>}
-                   {item.priority === 'NORMAL' && <span className="text-[10px] font-black uppercase bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-400 px-1.5 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">NORMAL</span>}
-                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate ml-1">{mainLabel}</span>
-                </div>
-                
-                <h4 className="font-bold text-slate-800 dark:text-slate-100 leading-tight truncate">{item.title}</h4>
-                
-                <div className="flex flex-wrap items-center gap-3 mt-1.5 text-[11px] text-slate-400">
-                    <span className="flex items-center gap-1 whitespace-nowrap"><CalendarClock size={11} /> {formatPeruvianDate(item.dueDate)}</span>
-                    {item.createdBy && <span className="flex items-center gap-1 truncate"><User size={11} /> {item.createdBy.split('@')[0]}</span>}
-                </div>
-             </div>
-
-             <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto mt-2 sm:mt-0 pt-3 sm:pt-0 border-t border-slate-100 dark:border-slate-800 sm:border-0 shrink-0">
-                <div className="flex flex-col items-end">
-                  <p className={`font-black text-base ${isOverdue ? 'text-red-600 dark:text-red-400' : 'text-orange-600 dark:text-orange-500'}`}>
-                    S/ {Number(item.amount).toLocaleString()}
-                  </p>
-                  {item.originalAmount > item.amount && (
-                    <span className="text-[10px] text-slate-400 line-through">
-                      S/ {Number(item.originalAmount).toLocaleString()}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-1">
-                   <button onClick={() => onInfo && onInfo(item)}
-                     className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                     title="Ver Detalles">
-                     <Info size={16} />
-                   </button>
-                   {permissions?.canMarkPaid && (
-                      <button onClick={() => onAction && onAction(item)}
-                        className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm border
-                           ${isPayment 
-                             ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 dark:bg-amber-900/20 dark:border-amber-700/50 dark:text-amber-400 dark:hover:bg-amber-900/40' 
-                             : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-700/50 dark:text-emerald-400 dark:hover:bg-emerald-900/40'}`}
-                      >
-                        <CheckCircle2 size={14} /> {isPayment ? 'Pagar' : 'Cobrar'}
-                      </button>
-                   )}
-                </div>
-             </div>
+    <div className="space-y-5">
+      {overdueItems.length > 0 && (
+        <div className="space-y-2.5">
+          {!isOnlyOverdue && <h4 className="text-[11px] font-black text-red-500 uppercase tracking-widest pl-1">Vencidos</h4>}
+          <div className="space-y-3">
+            {overdueItems.map(item => renderItem(item, true, false))}
           </div>
-        );
-      })}
+        </div>
+      )}
+      
+      {todayItems.length > 0 && (
+        <div className="space-y-2.5">
+          <h4 className="text-[11px] font-black text-orange-500 uppercase tracking-widest pl-1">Hoy</h4>
+          <div className="space-y-3">
+            {todayItems.map(item => renderItem(item, false, true))}
+          </div>
+        </div>
+      )}
+
+      {upcomingItems.length > 0 && (
+        <div className="space-y-2.5">
+          <h4 className="text-[11px] font-black text-blue-500 uppercase tracking-widest pl-1">Próximos</h4>
+          <div className="space-y-3">
+            {upcomingItems.map(item => renderItem(item, false, false))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

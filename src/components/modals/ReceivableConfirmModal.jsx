@@ -43,7 +43,7 @@ export default function ReceivableConfirmModal({
               Cliente — Cobro Seleccionado
             </p>
             <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
-              {receivableTarget.client || 'Sin cliente'} — {receivableTarget.title}
+              {receivableTarget.category || 'Sin categoría'} — {receivableTarget.title}
             </p>
             <div className="flex justify-between items-end mt-2">
               <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">Deuda pendiente:</span>
@@ -63,7 +63,7 @@ export default function ReceivableConfirmModal({
               <div className="mt-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-2.5 rounded-lg flex gap-2">
                 <AlertCircle size={14} className="text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
                 <p className="text-xs text-amber-800 dark:text-amber-400 font-medium leading-tight">
-                  Se registrará un abono. El saldo de <strong>{receivableTarget.client || 'este cliente'}</strong> bajará a <strong>S/ {remaining.toLocaleString()}</strong> y seguirá pendiente.
+                  Se registrará un abono. El saldo de <strong>{receivableTarget.category || 'esta categoría'}</strong> bajará a <strong>S/ {remaining.toLocaleString()}</strong> y seguirá pendiente.
                 </p>
               </div>
             )}

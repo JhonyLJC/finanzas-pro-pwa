@@ -4,14 +4,18 @@ import {
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
   browserLocalPersistence,
-  setPersistence
+  setPersistence,
+  sendPasswordResetEmail,
+  updatePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { auth, db, isMock } from '../lib/firebase';
 
 export function useAuth() {
   const [user, setUser] = useState(undefined);
-  const [role, setRole] = useState(null); // 'admin' | 'empleado'
+  const [role, setRole] = useState(null); // 'admin' | 'admin_secundario' | 'empleado' | 'contador'
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   const [subscription, setSubscription] = useState({ currentPeriodEnd: null, isExpired: false, plan: 'trial' });
@@ -41,8 +45,9 @@ export function useAuth() {
             if (data.tenantId) currentTenantId = data.tenantId;
 
             let actualData = data;
-            // Si el rol es empleado y tiene un tenantId diferente a su propio UID, buscamos los datos del dueño
-            if (data.role === 'empleado' && data.tenantId && data.tenantId !== firebaseUser.uid) {
+            // Si el rol NO es admin principal y tiene un tenantId diferente, sincronizamos la suscripción del dueño
+            const isMemberRole = ['admin_secundario', 'empleado', 'contador'].includes(data.role);
+            if (isMemberRole && data.tenantId && data.tenantId !== firebaseUser.uid) {
               try {
                 const adminDoc = await getDoc(doc(db, 'users', data.tenantId));
                 if (adminDoc.exists()) {
@@ -63,8 +68,8 @@ export function useAuth() {
                 if (actualData.role === 'admin') {
                    const trialEnd = new Date();
                    trialEnd.setDate(trialEnd.getDate() + 14);
-                   setSubscription({ currentPeriodEnd: trialEnd.toISOString(), isExpired: false, plan: 'trial' });
-                   updateDoc(doc(db, 'users', firebaseUser.uid), { currentPeriodEnd: trialEnd.toISOString(), tenantId: currentTenantId, plan: 'trial' }).catch(() => {});
+                   setSubscription({ currentPeriodEnd: trialEnd.toISOString(), isExpired: false, plan: 'empresa' });
+                   updateDoc(doc(db, 'users', firebaseUser.uid), { currentPeriodEnd: trialEnd.toISOString(), tenantId: currentTenantId, plan: 'empresa' }).catch(() => {});
                 } else {
                    setSubscription({ currentPeriodEnd: null, isExpired: true, plan: 'trial' }); // Si un empleado no halla al dueño, asumimos expirado
                 }
@@ -78,11 +83,11 @@ export function useAuth() {
               role: 'admin',
               tenantId: currentTenantId,
               currentPeriodEnd: trialEnd.toISOString(),
-              plan: 'trial',
+              plan: 'empresa',
               createdAt: new Date().toISOString()
             });
             setRole('admin');
-            setSubscription({ currentPeriodEnd: trialEnd.toISOString(), isExpired: false, plan: 'trial' });
+            setSubscription({ currentPeriodEnd: trialEnd.toISOString(), isExpired: false, plan: 'empresa' });
           }
         } catch {
           setRole('empleado'); // fallback seguro
@@ -132,5 +137,19 @@ export function useAuth() {
     setRole(null);
   };
 
-  return { user, role, authError, authLoading, subscription, login, logout };
+  const sendPasswordReset = async (email) => {
+    if (isMock) throw new Error('No disponible en modo local.');
+    await sendPasswordResetEmail(auth, email);
+  };
+
+  const changePassword = async (currentPassword, newPassword) => {
+    if (isMock) throw new Error('No disponible en modo local.');
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser) throw new Error('No hay sesión activa.');
+    const credential = EmailAuthProvider.credential(firebaseUser.email, currentPassword);
+    await reauthenticateWithCredential(firebaseUser, credential);
+    await updatePassword(firebaseUser, newPassword);
+  };
+
+  return { user, role, authError, authLoading, subscription, login, logout, sendPasswordReset, changePassword };
 }
