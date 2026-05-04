@@ -40,36 +40,45 @@ service cloud.firestore {
       return isAuth() && userRole() == 'admin';
     }
 
+    function isAnyAdmin() {
+      return isAuth() && (userRole() == 'admin' || userRole() == 'admin_secundario');
+    }
+
     function isEmpleado() {
-      return isAuth() && (userRole() == 'empleado' || userRole() == 'admin');
+      return isAuth() && userRole() == 'empleado';
+    }
+
+    function isContador() {
+      return isAuth() && userRole() == 'contador';
     }
 
     function ownTenant(docTenantId) {
-      return docTenantId == userTenantId() || docTenantId == request.auth.uid;
+      return docTenantId == userTenantId();
     }
 
-    // ─── Colección de Usuarios ────────────────────────────────────────────
+    // ─── Colección: Users ────────────────────────────────────────────────
     match /users/{userId} {
       allow read: if isAuth();
-      allow create: if isAuth() && (request.auth.uid == userId || isAdmin());
+      // Solo el Admin principal puede crear/borrar integrantes
+      allow create, delete: if isAdmin();
+      // El propio usuario puede editarse, o el admin
       allow update: if isAuth() && (request.auth.uid == userId || isAdmin());
-      allow delete: if isAdmin();
     }
 
     // ─── Pagos ────────────────────────────────────────────────────────────
-    match /artifacts/{appId}/public/data/payments/{paymentId} {
-      allow read:   if isEmpleado() && ownTenant(resource.data.tenantId);
-      allow create: if isEmpleado() && ownTenant(request.resource.data.tenantId);
-      allow update: if isEmpleado() && ownTenant(resource.data.tenantId);
-      allow delete: if isAdmin() && ownTenant(resource.data.tenantId);
+    match /payments/{paymentId} {
+      allow read:   if (isAnyAdmin() || isEmpleado() || isContador()) && ownTenant(resource.data.tenantId);
+      allow create: if (isAnyAdmin() || isEmpleado()) && ownTenant(request.resource.data.tenantId);
+      allow update: if (isAnyAdmin() || isEmpleado()) && ownTenant(resource.data.tenantId);
+      allow delete: if isAnyAdmin() && ownTenant(resource.data.tenantId);
     }
 
     // ─── Cobros (Receivables) ─────────────────────────────────────────────
-    match /artifacts/{appId}/public/data/receivables/{receivableId} {
-      allow read:   if isEmpleado() && ownTenant(resource.data.tenantId);
-      allow create: if isEmpleado() && ownTenant(request.resource.data.tenantId);
-      allow update: if isEmpleado() && ownTenant(resource.data.tenantId);
-      allow delete: if isAdmin() && ownTenant(resource.data.tenantId);
+    match /receivables/{receivableId} {
+      allow read:   if (isAnyAdmin() || isEmpleado() || isContador()) && ownTenant(resource.data.tenantId);
+      allow create: if (isAnyAdmin() || isEmpleado()) && ownTenant(request.resource.data.tenantId);
+      allow update: if (isAnyAdmin() || isEmpleado()) && ownTenant(resource.data.tenantId);
+      allow delete: if isAnyAdmin() && ownTenant(resource.data.tenantId);
     }
 
     // ─── Todo lo demás bloqueado ──────────────────────────────────────────
