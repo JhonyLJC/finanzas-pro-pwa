@@ -7,8 +7,10 @@
  * 3. Reemplazar el contenido con estas reglas
  * 4. Clic en "Publicar"
  *
- * IMPORTANTE: Primero asegúrate de que tus usuarios tengan
- * el campo `role` en la colección `users/{uid}`.
+ * NOTA TÉCNICA: La app guarda los datos en:
+ *   /artifacts/{projectId}/public/data/payments/{id}
+ *   /artifacts/{projectId}/public/data/receivables/{id}
+ * El {appId} en las reglas captura CUALQUIER valor de ese segmento.
  */
 
 export const firestoreRules = `
@@ -31,7 +33,6 @@ service cloud.firestore {
     }
 
     function userTenantId() {
-      // fallback: el tenantId del usuario, o su propio uid si no tiene
       let data = userData();
       return data.keys().hasAny(['tenantId']) ? data.tenantId : request.auth.uid;
     }
@@ -52,33 +53,48 @@ service cloud.firestore {
       return isAuth() && userRole() == 'contador';
     }
 
-    function ownTenant(docTenantId) {
-      return docTenantId == userTenantId();
+    function ownTenant(tenantId) {
+      return tenantId == userTenantId();
     }
 
     // ─── Colección: Users ────────────────────────────────────────────────
+    // Cualquier usuario autenticado puede leer (necesario para sincronizar
+    // la suscripción de empleados/contadores con su admin dueño)
     match /users/{userId} {
-      allow read: if isAuth();
-      // Solo el Admin principal puede crear/borrar integrantes
-      allow create, delete: if isAdmin();
-      // El propio usuario puede editarse, o el admin
+      allow read:   if isAuth();
+      allow create: if isAdmin();
       allow update: if isAuth() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
     }
 
-    // ─── Pagos ────────────────────────────────────────────────────────────
-    match /payments/{paymentId} {
-      allow read:   if (isAnyAdmin() || isEmpleado() || isContador()) && ownTenant(resource.data.tenantId);
-      allow create: if (isAnyAdmin() || isEmpleado()) && ownTenant(request.resource.data.tenantId);
-      allow update: if (isAnyAdmin() || isEmpleado()) && ownTenant(resource.data.tenantId);
-      allow delete: if isAnyAdmin() && ownTenant(resource.data.tenantId);
+    // ─── Pagos y Cobros ───────────────────────────────────────────────────
+    // La ruta real es: /artifacts/{appId}/public/data/{collection}/{docId}
+    // {appId} coincide con firebaseConfig.projectId en la app
+    match /artifacts/{appId}/public/data/payments/{docId} {
+      allow read:   if (isAnyAdmin() || isEmpleado() || isContador())
+                    && ownTenant(resource.data.tenantId);
+      allow create: if (isAnyAdmin() || isEmpleado())
+                    && ownTenant(request.resource.data.tenantId);
+      allow update: if (isAnyAdmin() || isEmpleado())
+                    && ownTenant(resource.data.tenantId);
+      allow delete: if isAnyAdmin()
+                    && ownTenant(resource.data.tenantId);
     }
 
-    // ─── Cobros (Receivables) ─────────────────────────────────────────────
-    match /receivables/{receivableId} {
-      allow read:   if (isAnyAdmin() || isEmpleado() || isContador()) && ownTenant(resource.data.tenantId);
-      allow create: if (isAnyAdmin() || isEmpleado()) && ownTenant(request.resource.data.tenantId);
-      allow update: if (isAnyAdmin() || isEmpleado()) && ownTenant(resource.data.tenantId);
-      allow delete: if isAnyAdmin() && ownTenant(resource.data.tenantId);
+    match /artifacts/{appId}/public/data/receivables/{docId} {
+      allow read:   if (isAnyAdmin() || isEmpleado() || isContador())
+                    && ownTenant(resource.data.tenantId);
+      allow create: if (isAnyAdmin() || isEmpleado())
+                    && ownTenant(request.resource.data.tenantId);
+      allow update: if (isAnyAdmin() || isEmpleado())
+                    && ownTenant(resource.data.tenantId);
+      allow delete: if isAnyAdmin()
+                    && ownTenant(resource.data.tenantId);
+    }
+
+    // ─── Nodos intermedios (public/data) — solo lectura de estructura ─────
+    match /artifacts/{appId}/public/data/{document=**} {
+      allow read: if isAuth();
     }
 
     // ─── Todo lo demás bloqueado ──────────────────────────────────────────
@@ -88,9 +104,3 @@ service cloud.firestore {
   }
 }
 `;
-
-
-// Solo para console.log de referencia en desarrollo
-if (import.meta.env.DEV) {
-  console.info('[Firestore Rules] Copia las reglas desde src/utils/firestoreRules.js hacia Firebase Console.');
-}
